@@ -222,8 +222,8 @@ export class AIService {
     const lowerMessage = userMessage.toLowerCase();
     
     // Check each knowledge category
-    for (const [category, data] of Object.entries(MEDICAL_KNOWLEDGE_BASE)) {
-      const hasKeyword = data.keywords.some(keyword => 
+    for (const [_, data] of Object.entries(MEDICAL_KNOWLEDGE_BASE)) {
+      const hasKeyword = data.keywords.some((keyword: string) => 
         lowerMessage.includes(keyword)
       );
       
