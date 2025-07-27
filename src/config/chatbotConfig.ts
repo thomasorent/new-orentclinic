@@ -92,9 +92,12 @@ export const quickReplies = [
   'Book an appointment',
   'Clinic hours',
   'Consultation fees',
+  'Weekend availability',
   'Location',
   'Contact information',
-  'Services offered'
+  'Services offered',
+  'Payment methods',
+  'Walk-in appointments'
 ];
 
 // Environment-specific configuration
