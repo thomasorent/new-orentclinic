@@ -239,7 +239,7 @@ function App() {
                 <WhatsAppIcon size={18} /> WhatsApp (ENT)
               </a>
             </div>
-            <p>✉️ Email: orentclinic@gmail.com</p>
+            <p>✉️ Email: <a href="mailto:orentclinic@gmail.com">orentclinic@gmail.com</a></p>
           </div>
         </div>
       </section>
