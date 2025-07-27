@@ -13,7 +13,6 @@ interface QuickRepliesProps {
 }
 
 const quickReplies: QuickReply[] = [
-  { id: '1', text: 'Book an appointment', icon: '📅' },
   { id: '2', text: 'Clinic hours', icon: '🕐' },
   { id: '3', text: 'Consultation fees', icon: '💰' },
   { id: '4', text: 'Location', icon: '📍' },
