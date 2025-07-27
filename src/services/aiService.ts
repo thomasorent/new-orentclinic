@@ -133,7 +133,7 @@ const MEDICAL_KNOWLEDGE_BASE = {
   appointments: {
     keywords: ['appointment', 'book', 'schedule', 'visit', 'consultation'],
     responses: [
-      'To book an appointment, you can call us at 934 934 5538 or fill out the appointment form on our website. Our clinic hours are Monday to Friday, 10 AM to 2 PM.',
+      'To book an appointment, you can call us at 934 934 5538. Our clinic hours are Monday to Friday, 10 AM to 2 PM.',
       'You can schedule an appointment by calling 934 934 5538. We accept both new and review patients during our clinic hours.',
       'For appointments, please call us at 934 934 5538. We\'re open Monday to Friday from 10 AM to 2 PM.'
     ]
@@ -149,9 +149,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   fees: {
     keywords: ['fee', 'cost', 'price', 'charge', 'payment', 'consultation fee'],
     responses: [
-      'Our consultation fees are ₹325 for new patients and ₹25 for review patients. This applies to both orthopedic and ENT consultations.',
-      'New patient consultation: ₹325, Review consultation: ₹25. These fees apply to both orthopedic and ENT services.',
-      'Consultation fees: ₹325 (new patients), ₹25 (review patients). Same rates for both orthopedic and ENT consultations.'
+      'Our consultation fees are ₹300 for new patients. This applies to both orthopedic and ENT consultations.',
+      'New patient consultation: ₹300. These fees apply to both orthopedic and ENT services.',
+      'Consultation fees: ₹300. Same rates for both orthopedic and ENT consultations.'
     ]
   },
   orthopedic: {

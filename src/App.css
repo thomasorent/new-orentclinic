@@ -586,6 +586,29 @@ html {
     gap: 0.7rem;
     padding: 1rem 0.5rem;
   }
+  .navbar-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    position: relative;
+    width: 100%;
+  }
+  .navbar-mobile-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  .navbar-hamburger {
+    display: block;
+    position: static;
+    margin-bottom: 0;
+    align-self: auto;
+  }
+  .logo {
+    margin-top: 0;
+  }
   .about-section, .appointment-section, .hours-section, .contact-section {
     padding: 1.2rem 0.5rem;
     margin: 1.2rem 0.2rem;
@@ -636,6 +659,31 @@ html {
   }
   .cta-btn.secondary {
     display: inline-block;
+  }
+  .navbar-hamburger {
+    display: block;
+    right: 1.2rem;
+    top: 1.2rem;
+  }
+  .navbar-right {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    background: #fff;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1.2rem 1.5rem 1.2rem 2rem;
+    box-shadow: 0 8px 24px rgba(23,86,169,0.08);
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    z-index: 15;
+    transition: all 0.3s;
+  }
+  .navbar-right.open {
+    display: flex;
   }
 }
 .degree-label {

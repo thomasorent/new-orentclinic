@@ -148,7 +148,11 @@ const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onToggle }) => {
       {!isOpen && showPopup && (
         <div className="chatbot-popup-message">
           <span>
-            Hi there! I’m your virtual assistant at Orent. Feel free to ask me anything about our services, schedules, doctors, and more. I’m powered by AI, so while I aim to be helpful, I might not always get it perfect.
+            Welcome to Orthopedic And ENT Consultations, Chengannur.Kerala. India<br/>
+            We’re glad you’re here.<br/><br/>
+            📞 For detailed queries, appointments or please call us at 934 934 5538 .<br/><br/>
+            💬 I’m here to assist you with general information about our clinic, consultation services, and working hours.<br/><br/>
+            How can I help you today?
           </span>
           <button className="chatbot-popup-close" onClick={() => setShowPopup(false)} aria-label="Close info popup">×</button>
         </div>
@@ -232,7 +236,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onToggle }) => {
                 className="send-button"
                 aria-label="Send message"
               >
-                <SendIcon size={16} />
+                {'>'}
               </button>
             </div>
           </div>

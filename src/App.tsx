@@ -3,6 +3,46 @@ import Chatbot from './components/Chatbot'
 import { useState } from 'react'
 import { WhatsAppIcon } from './components/Icons';
 
+function HamburgerIcon({ open }: { open: boolean }) {
+  return (
+    <span style={{ display: 'inline-block', width: 22, height: 22, position: 'relative' }}>
+      <span style={{
+        position: 'absolute',
+        height: 2,
+        width: 18,
+        background: '#1756A9',
+        borderRadius: 2,
+        top: open ? 10 : 5,
+        left: 2,
+        transition: '0.3s',
+        transform: open ? 'rotate(45deg)' : 'none',
+      }} />
+      <span style={{
+        position: 'absolute',
+        height: 2,
+        width: 18,
+        background: '#1756A9',
+        borderRadius: 2,
+        top: 10,
+        left: 2,
+        opacity: open ? 0 : 1,
+        transition: '0.3s',
+      }} />
+      <span style={{
+        position: 'absolute',
+        height: 2,
+        width: 18,
+        background: '#1756A9',
+        borderRadius: 2,
+        top: open ? 10 : 15,
+        left: 2,
+        transition: '0.3s',
+        transform: open ? 'rotate(-45deg)' : 'none',
+      }} />
+    </span>
+  );
+}
+
 const en = {
   announcement: 'Announcement: Our consultation services at the centre are temporarily closed and will resume on October 8th, 2025. However, teleconsultation services remain available for existing patients. For further information or assistance, please contact us at 934 934 5538. We appreciate your understanding and continued trust.',
   nav: {
@@ -72,6 +112,7 @@ const en = {
 
 function App() {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   return (
     <div className="orent-root">
@@ -82,17 +123,27 @@ function App() {
       {/* Top Navigation Bar */}
       <nav className="navbar">
         <div className="navbar-left">
-          <span className="logo">Orent Consultation</span>
+          {/* Row for hamburger and logo */}
+          <div className="navbar-mobile-row">
+            <span className="logo">Orent Consultation</span>
+            <button
+              className="navbar-hamburger"
+              aria-label="Open menu"
+              onClick={() => setNavOpen((o) => !o)}
+            >
+              <HamburgerIcon open={navOpen} />
+            </button>
+          </div>
           <span className="tagline">Orthopedic & ENT Care, Chengannur, Kerala, India</span>
         </div>
-        <ul className="navbar-right">
-          <li><a href="#home">{en.nav.home}</a></li>
-          <li><a href="#about">{en.nav.about}</a></li>
-          <li><a href="#services">{en.nav.services}</a></li>
-          <li><a href="#doctors">{en.nav.doctors}</a></li>
-          {/* <li><a href="#appointments">{en.nav.appointments}</a></li> */}
-          <li><a href="#contact">{en.nav.contact}</a></li>
-          <li><a href="https://wa.me/919349345538" target="_blank" rel="noopener noreferrer" className="whatsapp-icon"><WhatsAppIcon size={22} /></a></li>
+        <ul className={`navbar-right${navOpen ? ' open' : ''}`}>
+          <li><a href="#home" onClick={() => setNavOpen(false)}>{en.nav.home}</a></li>
+          <li><a href="#about" onClick={() => setNavOpen(false)}>{en.nav.about}</a></li>
+          <li><a href="#services" onClick={() => setNavOpen(false)}>{en.nav.services}</a></li>
+          <li><a href="#doctors" onClick={() => setNavOpen(false)}>{en.nav.doctors}</a></li>
+          {/* <li><a href="#appointments" onClick={() => setNavOpen(false)}>{en.nav.appointments}</a></li> */}
+          <li><a href="#contact" onClick={() => setNavOpen(false)}>{en.nav.contact}</a></li>
+          <li><a href="https://wa.me/919349345538" target="_blank" rel="noopener noreferrer" className="whatsapp-icon" onClick={() => setNavOpen(false)}><WhatsAppIcon size={22} /></a></li>
         </ul>
       </nav>
 
