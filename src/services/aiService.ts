@@ -68,10 +68,10 @@ const MEDICAL_KNOWLEDGE_BASE = {
   doctors: {
     keywords: ['doctors', 'doctor', 'physician', 'specialist', 'dr thomas', 'dr susan', 'who are the doctors', 'consulting doctors'],
     responses: [
-      'We have two experienced doctors: Dr. K. M. Thomas (Orthopedic Surgeon) and Dr. Susan Thomas (ENT Specialist). Dr. Thomas has MBBS and D.Ortho qualifications with over 40 years of experience in bone and joint care. Dr. Susan has MBBS, DLO, and MS. ENT qualifications specializing in ear, nose, and throat conditions.',
-      'Our clinic is staffed by Dr. K. M. Thomas (Orthopedic) and Dr. Susan Thomas (ENT). Both doctors are highly qualified with extensive experience. Dr. Thomas treats bone and joint diseases, while Dr. Susan specializes in ENT care.',
-      'We have two specialists: Dr. K. M. Thomas for orthopedic care and Dr. Susan Thomas for ENT treatment. Both doctors have excellent qualifications and decades of experience in their respective fields.',
-      'Our consulting doctors are Dr. K. M. Thomas – Orthopaedics and Dr. Susan Thomas – ENT.'
+      'We have two experienced doctors: Dr. K. M. Thomas (Orthopedic Surgeon) and Dr. Susan Thomas (ENT Specialist). Dr. Thomas has MBBS and D.Ortho qualifications with over 40 years of experience in bone and joint care. Dr. Susan has MBBS, DLO, and MS. ENT qualifications with 40 years of clinical experience specializing in ear, nose, and throat conditions.',
+      'Our clinic is staffed by Dr. K. M. Thomas (Orthopedic) and Dr. Susan Thomas (ENT). Both doctors are highly qualified with extensive experience. Dr. Thomas treats bone and joint diseases, while Dr. Susan specializes in ENT care with 40 years of clinical experience.',
+      'We have two specialists: Dr. K. M. Thomas for orthopedic care and Dr. Susan Thomas for ENT treatment. Both doctors have excellent qualifications and decades of experience in their respective fields, with Dr. Susan having 40 years of clinical experience.',
+      'Our consulting doctors are Dr. K. M. Thomas – Orthopaedics and Dr. Susan Thomas – ENT (40 years of clinical experience).'
     ]
   },
   appointmentBooking: {
@@ -165,9 +165,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   ent: {
     keywords: ['ent', 'ear', 'nose', 'throat', 'dr susan', 'susan thomas'],
     responses: [
-      'Dr. Susan Thomas is our ENT specialist, treating ear, nose, and throat conditions. She has MBBS, DLO, and MS. ENT qualifications with extensive experience.',
-      'Dr. Susan Thomas specializes in ENT (Ear, Nose, Throat) care. She has MBBS, DLO, and MS. ENT qualifications.',
-      'Our ENT specialist Dr. Susan Thomas treats ear, nose, and throat conditions. She has comprehensive qualifications including MBBS, DLO, and MS. ENT.'
+      'Dr. Susan Thomas is our ENT specialist, treating ear, nose, and throat conditions. She has MBBS, DLO, and MS. ENT qualifications with 40 years of clinical experience.',
+      'Dr. Susan Thomas specializes in ENT (Ear, Nose, Throat) care. She has MBBS, DLO, and MS. ENT qualifications with 40 years of clinical experience.',
+      'Our ENT specialist Dr. Susan Thomas treats ear, nose, and throat conditions. She has comprehensive qualifications including MBBS, DLO, and MS. ENT with 40 years of clinical experience.'
     ]
   },
   contact: {
@@ -197,9 +197,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   qualifications: {
     keywords: ['qualifications', 'education', 'degrees', 'mbbs', 'd.ortho', 'dlo', 'ms ent', 'training', 'background', 'credentials'],
     responses: [
-      'Dr. K. M. Thomas: MBBS from Govt. Medical College, Thiruvananthapuram (1981), D.Ortho from Govt. Medical College, Calicut (1986). Dr. Susan Thomas: MBBS from Govt. Medical College, Thiruvananthapuram (1981), DLO and MS. ENT from Govt. Medical College, Calicut (1987). Both doctors have extensive postgraduate training and over 40 years of combined experience.',
-      'Our doctors\' qualifications: Dr. Thomas completed MBBS at Govt. Medical College, Thiruvananthapuram in 1981, then specialized in Orthopedics with D.Ortho from Govt. Medical College, Calicut in 1986. Dr. Susan earned her MBBS from the same institution in 1981, followed by DLO and MS. ENT from Govt. Medical College, Calicut in 1987.',
-      'Education details: Dr. K. M. Thomas holds MBBS (1981, Thiruvananthapuram) and D.Ortho (1986, Calicut). Dr. Susan Thomas has MBBS (1981, Thiruvananthapuram), DLO and MS. ENT (1987, Calicut). Both graduated from prestigious government medical colleges and have decades of specialized practice experience.'
+      'Dr. K. M. Thomas: MBBS from Govt. Medical College, Thiruvananthapuram (1981), D.Ortho from Govt. Medical College, Calicut (1986). Dr. Susan Thomas: MBBS from Govt. Medical College, Thiruvananthapuram (1981), DLO and MS. ENT from Govt. Medical College, Calicut (1987). Both doctors have extensive postgraduate training and over 40 years of combined experience, with Dr. Susan having 40 years of clinical experience.',
+      'Our doctors\' qualifications: Dr. Thomas completed MBBS at Govt. Medical College, Thiruvananthapuram in 1981, then specialized in Orthopedics with D.Ortho from Govt. Medical College, Calicut in 1986. Dr. Susan earned her MBBS from the same institution in 1981, followed by DLO and MS. ENT from Govt. Medical College, Calicut in 1987, and has 40 years of clinical experience.',
+      'Education details: Dr. K. M. Thomas holds MBBS (1981, Thiruvananthapuram) and D.Ortho (1986, Calicut). Dr. Susan Thomas has MBBS (1981, Thiruvananthapuram), DLO and MS. ENT (1987, Calicut) with 40 years of clinical experience. Both graduated from prestigious government medical colleges and have decades of specialized practice experience.'
     ]
   },
   emergency: {
