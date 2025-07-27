@@ -33,6 +33,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onToggle }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showPopup, setShowPopup] = useState(true);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -143,10 +144,19 @@ const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onToggle }) => {
 
   return (
     <>
+      {/* Popup Message */}
+      {!isOpen && showPopup && (
+        <div className="chatbot-popup-message">
+          <span>
+          Hi there! I’m your virtual assistant at Orent. Feel free to ask me anything about our services, schedules, doctors, and more. I’m powered by AI, so while I aim to be helpful, I might not always get it perfect.
+          </span>
+          <button className="chatbot-popup-close" onClick={() => setShowPopup(false)} aria-label="Close info popup">×</button>
+        </div>
+      )}
       {/* Chatbot Toggle Button */}
       <button 
         className={`chatbot-toggle ${config.ui.position}`}
-        onClick={onToggle}
+        onClick={() => { onToggle(); setShowPopup(false); }}
         aria-label="Open chat"
       >
         <MessageIcon size={24} />
