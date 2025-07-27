@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { aiService } from '../services/aiService';
 import QuickReplies from './QuickReplies';
-import { SendIcon, CloseIcon, MessageIcon, LoaderIcon } from './Icons';
+import { CloseIcon, MessageIcon, LoaderIcon } from './Icons';
 import { getConfig } from '../config/chatbotConfig';
 import './Chatbot.css';
 
