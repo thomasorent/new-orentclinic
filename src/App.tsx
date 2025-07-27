@@ -1,4 +1,6 @@
 import './App.css'
+import Chatbot from './components/Chatbot'
+import { useState } from 'react'
 
 const en = {
   announcement: 'Announcement: Our consultation services at the centre are temporarily closed and will resume on October 8th, 2025. However, teleconsultation services remain available for existing patients. For further information or assistance, please contact us at 934 934 5538. We appreciate your understanding and continued trust.',
@@ -68,6 +70,7 @@ const en = {
 }
 
 function App() {
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
 
   return (
     <div className="orent-root">
@@ -243,11 +246,11 @@ function App() {
         </div>
         <div className="footer-copy">{en.footer.copyright}</div>
       </footer>
-
-      {/* Floating WhatsApp Button */}
-      <a href="https://wa.me/919349345538" className="floating-whatsapp" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
-        <span role="img" aria-label="WhatsApp">💬</span>
-      </a>
+      {/* AI Chatbot */}
+      <Chatbot 
+        isOpen={isChatbotOpen} 
+        onToggle={() => setIsChatbotOpen(!isChatbotOpen)} 
+      />
     </div>
   )
 }
