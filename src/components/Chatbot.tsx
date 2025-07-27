@@ -148,7 +148,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ isOpen, onToggle }) => {
       {!isOpen && showPopup && (
         <div className="chatbot-popup-message">
           <span>
-          Hi there! I’m your virtual assistant at Orent. Feel free to ask me anything about our services, schedules, doctors, and more. I’m powered by AI, so while I aim to be helpful, I might not always get it perfect.
+            Hi there! I’m your virtual assistant at Orent. Feel free to ask me anything about our services, schedules, doctors, and more. I’m powered by AI, so while I aim to be helpful, I might not always get it perfect.
           </span>
           <button className="chatbot-popup-close" onClick={() => setShowPopup(false)} aria-label="Close info popup">×</button>
         </div>

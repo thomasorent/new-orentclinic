@@ -76,9 +76,11 @@ html {
   font-weight: 600;
 }
 .whatsapp-icon {
-  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
   color: #1DBF73;
   text-decoration: none;
+  vertical-align: middle;
 }
 
 /* Hero Section */

@@ -321,6 +321,20 @@
   background: #f1f5f9;
 }
 
+.chatbot-popup-map-link {
+  display: block;
+  margin-top: 8px;
+  color: #2563eb;
+  text-decoration: underline;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.chatbot-popup-map-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
 /* Responsive Design */
 @media (max-width: 480px) {
   .chatbot-overlay {

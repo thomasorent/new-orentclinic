@@ -1,6 +1,7 @@
 import './App.css'
 import Chatbot from './components/Chatbot'
 import { useState } from 'react'
+import { WhatsAppIcon } from './components/Icons';
 
 const en = {
   announcement: 'Announcement: Our consultation services at the centre are temporarily closed and will resume on October 8th, 2025. However, teleconsultation services remain available for existing patients. For further information or assistance, please contact us at 934 934 5538. We appreciate your understanding and continued trust.',
@@ -89,9 +90,9 @@ function App() {
           <li><a href="#about">{en.nav.about}</a></li>
           <li><a href="#services">{en.nav.services}</a></li>
           <li><a href="#doctors">{en.nav.doctors}</a></li>
-          <li><a href="#appointments">{en.nav.appointments}</a></li>
+          {/* <li><a href="#appointments">{en.nav.appointments}</a></li> */}
           <li><a href="#contact">{en.nav.contact}</a></li>
-          <li><a href="https://wa.me/919349345538" target="_blank" rel="noopener noreferrer" className="whatsapp-icon">💬</a></li>
+          <li><a href="https://wa.me/919349345538" target="_blank" rel="noopener noreferrer" className="whatsapp-icon"><WhatsAppIcon size={22} /></a></li>
         </ul>
       </nav>
 
@@ -101,10 +102,10 @@ function App() {
         <div className="hero-content">
           <h1>{en.hero.title}</h1>
           <h2>{en.hero.subtitle}</h2>
-          <div className="hero-cta">
+          {/* <div className="hero-cta">
             <button className="cta-btn">{en.hero.book}</button>
             <a href="tel:9349345538" className="cta-btn secondary">{en.hero.call}</a>
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -134,7 +135,6 @@ function App() {
           <div className="doctor-card">
             <div className="doctor-card-left">
               <img src="/thomas.jpg" />
-              <a href="#" className="profile-link">{en.viewProfile}</a>
             </div>
             <div className="doctor-card-right">
               <h3 style={{textAlign: 'left'}}>{en.drThomas.name}</h3>
@@ -146,7 +146,6 @@ function App() {
           <div className="doctor-card">
             <div className="doctor-card-left">
               <img src="/susan.jpg" alt="Dr. Susan Thomas" />
-              <a href="#" className="profile-link">{en.viewProfile}</a>
             </div>
             <div className="doctor-card-right">
               <h3 style={{textAlign: 'left'}}>{en.drSusan.name}</h3>
@@ -159,7 +158,7 @@ function App() {
       </section>
 
       {/* Book an Appointment */}
-      <section className="appointment-section" id="appointments">
+      {/* <section className="appointment-section" id="appointments">
         <h2>{en.appointmentTitle}</h2>
         <form className="appointment-form">
           <input type="text" placeholder={en.appointment.name} required />
@@ -172,7 +171,7 @@ function App() {
           <input type="datetime-local" required />
           <button type="submit">{en.appointment.submit}</button>
         </form>
-      </section>
+      </section> */}
 
       {/* Clinic Hours & Fees */}
       <section className="hours-section">
@@ -182,19 +181,19 @@ function App() {
             <tr>
               <th>{en.doctorsTitle.slice(0,6)}</th>
               <th>Timing</th>
-              <th>Fee (New / Review)</th>
+              <th>Fee</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>{en.drThomas.name}</td>
               <td>Mon–Fri 10am–2pm</td>
-              <td>₹325 / ₹25</td>
+              <td>₹300</td>
             </tr>
             <tr>
               <td>{en.drSusan.name}</td>
               <td>Mon–Fri 10am–2pm</td>
-              <td>₹325 / ₹25</td>
+              <td>₹300</td>
             </tr>
           </tbody>
         </table>
@@ -228,22 +227,31 @@ function App() {
           </div>
           <div className="contact-info">
             <p>📍 {en.contact.address}</p>
-            <p>📞 <a href="tel:9349345538">934 934 5538</a></p>
-            <p>🌐 <a href="https://orentclinic.com" target="_blank" rel="noopener noreferrer">{en.contact.website}</a></p>
-            <p>📱 <a href="https://wa.me/919349345538" target="_blank" rel="noopener noreferrer">{en.contact.whatsapp}</a></p>
-            {/* <p>✉️ Email: info@orentclinic.com</p> */}
+            <p>📞 <a href="tel:+914792455538">+91-479-2455538</a></p>
+            <p>📞 <a href="tel:+919349345538">+91-934-934-5538</a></p>
+            <p>📞 <a href="tel:+919388958498">+91-938-895-8498</a></p>
+            <p>📞 <a href="tel:+918921042340">+91-892-104-2340</a></p>
+            <div style={{ display: 'flex', gap: '1.5rem', margin: '0.5em 0' }}>
+              <a href="https://wa.me/919847462563" target="_blank" rel="noopener noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                <WhatsAppIcon size={18} /> WhatsApp (Ortho)
+              </a>
+              <a href="https://wa.me/919447400188" target="_blank" rel="noopener noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                <WhatsAppIcon size={18} /> WhatsApp (ENT)
+              </a>
+            </div>
+            <p>✉️ Email: orentconsult@gmail.com</p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="footer">
-        <div className="footer-links">
+        {/* <div className="footer-links">
           <a href="#">{en.footer.privacy}</a> | <a href="#">{en.footer.terms}</a> | <a href="#">{en.footer.sitemap}</a>
-        </div>
-        <div className="footer-social">
-          {/* Add social icons if any */}
-        </div>
+        </div> */}
+        {/* <div className="footer-social">
+          {/* Add social icons if any }
+        </div> */}
         <div className="footer-copy">{en.footer.copyright}</div>
       </footer>
       {/* AI Chatbot */}
