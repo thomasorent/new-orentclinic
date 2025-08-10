@@ -1,7 +1,7 @@
 const https = require('https');
 
 // Replace with your actual Netlify site URL
-const WEBHOOK_URL = 'https://your-site-name.netlify.app/.netlify/functions/whatsapp-webhook';
+const WEBHOOK_URL = 'https://new-orentclinic.netlify.app/.netlify/functions/whatsapp-webhook';
 
 // Test webhook verification (GET request)
 function testWebhookVerification() {

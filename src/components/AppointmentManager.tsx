@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { appointmentService } from '../services/appointmentService';
+import { AppointmentService } from '../services/appointmentService';
 import type { Appointment, CreateAppointmentRequest } from '../types/appointment';
 import './AppointmentManager.css';
 
@@ -28,7 +28,7 @@ const AppointmentManager: React.FC = () => {
       if (filters.department) filteredFilters.department = filters.department;
       if (filters.date) filteredFilters.date = filters.date;
 
-      const data = await appointmentService.getAppointments(filteredFilters);
+      const data = await AppointmentService.getAppointments(filteredFilters);
       setAppointments(data);
     } catch (error) {
       console.error('Error loading appointments:', error);
@@ -45,10 +45,10 @@ const AppointmentManager: React.FC = () => {
     e.preventDefault();
     try {
       if (editingAppointment) {
-        await appointmentService.updateAppointment(editingAppointment.id, formData);
+        await AppointmentService.updateAppointment(editingAppointment.id, formData);
         setEditingAppointment(null);
       } else {
-        await appointmentService.createAppointment(formData);
+        await AppointmentService.createAppointment(formData);
       }
       
       setFormData({
@@ -80,7 +80,7 @@ const AppointmentManager: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this appointment?')) {
       try {
-        await appointmentService.deleteAppointment(id);
+        await AppointmentService.deleteAppointment(id);
         loadAppointments();
       } catch (error) {
         console.error('Error deleting appointment:', error);

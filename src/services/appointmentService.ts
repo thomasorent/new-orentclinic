@@ -1,190 +1,244 @@
-import type { Appointment, CreateAppointmentRequest, UpdateAppointmentRequest } from '../types/appointment';
+import { supabase } from '../config/database';
+import type { Appointment, CreateAppointmentRequest } from '../types/appointment';
 
-class AppointmentService {
-  private readonly API_BASE = '/.netlify/functions';
+// Available time slots (weekdays only)
+export const AVAILABLE_TIME_SLOTS = [
+  '10:30', '10:45', '11:15', '11:30', '12:00', 
+  '12:15', '12:30', '1:00', '1:30', '1:45'
+];
+
+// Weekday names for validation
+export const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+export class AppointmentService {
+  // Read appointments from database
+  static async readAppointments(): Promise<Appointment[]> {
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .order('time_slot', { ascending: true });
+      
+      if (error) {
+        console.error('Error reading appointments from database:', error);
+        return [];
+      }
+      
+      // Map snake_case to camelCase
+      return (data || []).map(row => ({
+        id: row.id,
+        date: row.date,
+        timeSlot: row.time_slot,
+        patientName: row.patient_name,
+        department: row.department,
+        patientPhone: row.patient_phone,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+    } catch (error) {
+      console.error('Error reading appointments from database:', error);
+      return [];
+    }
+  }
+
+  // Validate if date and time are valid for booking
+  static isValidAppointmentDateTime(dateStr: string, timeStr: string): { isValid: boolean; error?: string } {
+    try {
+      const date = new Date(dateStr);
+      
+      // Check if it's a valid date
+      if (isNaN(date.getTime())) {
+        return { isValid: false, error: 'Invalid date format' };
+      }
+      
+      // Check if it's a weekday (0 = Sunday, 6 = Saturday)
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return { isValid: false, error: 'Appointments are only available on weekdays (Monday to Friday)' };
+      }
+      
+      // Check if it's in the future
+      const now = new Date();
+      if (date < now) {
+        return { isValid: false, error: 'Cannot book appointments in the past' };
+      }
+      
+      // Check if time is in available slots
+      if (!AVAILABLE_TIME_SLOTS.includes(timeStr)) {
+        return { isValid: false, error: `Invalid time slot. Available slots are: ${AVAILABLE_TIME_SLOTS.join(', ')}` };
+      }
+      
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: false, error: 'Invalid date/time format' };
+    }
+  }
+
+  // Check available time slots for a specific date
+  static async getAvailableSlotsForDate(dateStr: string): Promise<{ available: string[], booked: string[], error?: string }> {
+    try {
+      // Validate the date format and check if it's a weekday
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return { available: [], booked: [], error: 'Invalid date format' };
+      }
+      
+      // Check if it's a weekday
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return { available: [], booked: [], error: 'Appointments are only available on weekdays (Monday to Friday)' };
+      }
+      
+      // Check if it's in the future
+      const now = new Date();
+      if (date < now) {
+        return { available: [], booked: [], error: 'Cannot check availability for past dates' };
+      }
+
+      // Get all appointments for this date
+      const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select('time_slot')
+        .eq('date', dateStr);
+
+      if (error) {
+        console.error('Error fetching appointments for date:', error);
+        return { available: [], booked: [], error: 'Database error while checking availability' };
+      }
+
+      // Get booked time slots
+      const bookedSlots = appointments?.map(apt => apt.time_slot) || [];
+      
+      // Find available slots (all slots minus booked ones)
+      const availableSlots = AVAILABLE_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
+
+      return {
+        available: availableSlots,
+        booked: bookedSlots
+      };
+
+    } catch (error) {
+      console.error('Error checking available slots for date:', error);
+      return { available: [], booked: [], error: 'Error processing date' };
+    }
+  }
 
   // Create new appointment
-  async createAppointment(data: CreateAppointmentRequest): Promise<Appointment> {
+  static async createAppointment(appointment: CreateAppointmentRequest): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`${this.API_BASE}/appointments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      // Map camelCase to snake_case for database
+      const dbAppointment = {
+        date: appointment.date,
+        time_slot: appointment.timeSlot,
+        patient_name: appointment.patientName,
+        department: appointment.department,
+        patient_phone: appointment.patientPhone
+      };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create appointment: ${errorText}`);
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert([dbAppointment])
+        .select();
+
+      if (error) {
+        console.error('Error creating appointment:', error);
+        return { success: false, error: 'Database error while creating appointment' };
       }
 
-      return await response.json();
+      return { success: true };
     } catch (error) {
       console.error('Error creating appointment:', error);
-      throw error;
+      return { success: false, error: 'Unexpected error while creating appointment' };
     }
   }
 
-  // Get all appointments
-  async getAppointments(filters?: { department?: 'Ortho' | 'ENT'; date?: string }): Promise<Appointment[]> {
+  // Update existing appointment
+  static async updateAppointment(id: string, updates: Partial<CreateAppointmentRequest>): Promise<{ success: boolean; error?: string }> {
     try {
-      const queryParams = new URLSearchParams();
-      if (filters?.department) queryParams.append('department', filters.department);
-      if (filters?.date) queryParams.append('date', filters.date);
+      // Map camelCase to snake_case for database
+      const dbUpdates: any = {};
+      if (updates.date) dbUpdates.date = updates.date;
+      if (updates.timeSlot) dbUpdates.time_slot = updates.timeSlot;
+      if (updates.patientName) dbUpdates.patient_name = updates.patientName;
+      if (updates.department) dbUpdates.department = updates.department;
+      if (updates.patientPhone) dbUpdates.patient_phone = updates.patientPhone;
 
-      const response = await fetch(`${this.API_BASE}/appointments?${queryParams.toString()}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch appointments: ${errorText}`);
+      const { data, error } = await supabase
+        .from('appointments')
+        .update(dbUpdates)
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        console.error('Error updating appointment:', error);
+        return { success: false, error: 'Database error while updating appointment' };
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-      throw error;
-    }
-  }
-
-  // Get appointment by ID
-  async getAppointmentById(id: string): Promise<Appointment | null> {
-    try {
-      const response = await fetch(`${this.API_BASE}/appointments/${id}`);
-      
-      if (response.status === 404) {
-        return null;
-      }
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch appointment: ${errorText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching appointment:', error);
-      throw error;
-    }
-  }
-
-  // Update appointment
-  async updateAppointment(id: string, data: UpdateAppointmentRequest): Promise<Appointment | null> {
-    try {
-      const response = await fetch(`${this.API_BASE}/appointments/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (response.status === 404) {
-        return null;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to update appointment: ${errorText}`);
-      }
-
-      return await response.json();
+      return { success: true };
     } catch (error) {
       console.error('Error updating appointment:', error);
-      throw error;
+      return { success: false, error: 'Unexpected error while updating appointment' };
     }
   }
 
   // Delete appointment
-  async deleteAppointment(id: string): Promise<boolean> {
+  static async deleteAppointment(id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`${this.API_BASE}/appointments/${id}`, {
-        method: 'DELETE',
-      });
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', id);
 
-      if (response.status === 404) {
-        return false;
+      if (error) {
+        console.error('Error deleting appointment:', error);
+        return { success: false, error: 'Database error while deleting appointment' };
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to delete appointment: ${errorText}`);
-      }
-
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Error deleting appointment:', error);
-      throw error;
+      return { success: false, error: 'Unexpected error while deleting appointment' };
     }
   }
 
-  // Get appointments by phone number (useful for WhatsApp integration)
-  async getAppointmentsByPhone(phone: string): Promise<Appointment[]> {
+  // Get appointments with filters
+  static async getAppointments(filters: Record<string, string> = {}): Promise<Appointment[]> {
     try {
-      const response = await fetch(`${this.API_BASE}/appointments?phone=${encodeURIComponent(phone)}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch appointments by phone: ${errorText}`);
+      let query = supabase
+        .from('appointments')
+        .select('*')
+        .order('date', { ascending: true })
+        .order('time_slot', { ascending: true });
+
+      // Apply filters
+      if (filters.department) {
+        query = query.eq('department', filters.department);
+      }
+      if (filters.date) {
+        query = query.eq('date', filters.date);
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching appointments by phone:', error);
-      throw error;
-    }
-  }
-
-  // Get upcoming appointments
-  async getUpcomingAppointments(): Promise<Appointment[]> {
-    try {
-      const response = await fetch(`${this.API_BASE}/appointments?upcoming=true`);
+      const { data, error } = await query;
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch upcoming appointments: ${errorText}`);
+      if (error) {
+        console.error('Error reading appointments from database:', error);
+        return [];
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching upcoming appointments:', error);
-      throw error;
-    }
-  }
-
-  // Get appointments for a specific date
-  async getAppointmentsByDate(date: string): Promise<Appointment[]> {
-    try {
-      const response = await fetch(`${this.API_BASE}/appointments?date=${encodeURIComponent(date)}`);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch appointments by date: ${errorText}`);
-      }
-
-      return await response.json();
+      // Map snake_case to camelCase
+      return (data || []).map(row => ({
+        id: row.id,
+        date: row.date,
+        timeSlot: row.time_slot,
+        patientName: row.patient_name,
+        department: row.department,
+        patientPhone: row.patient_phone,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
     } catch (error) {
-      console.error('Error fetching appointments by date:', error);
-      throw error;
+      console.error('Error reading appointments from database:', error);
+      return [];
     }
   }
-
-  // Get appointments by department
-  async getAppointmentsByDepartment(department: 'Ortho' | 'ENT'): Promise<Appointment[]> {
-    try {
-      const response = await fetch(`${this.API_BASE}/appointments?department=${department}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch appointments by department: ${errorText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching appointments by department:', error);
-      throw error;
-    }
-  }
-}
-
-export const appointmentService = new AppointmentService(); 
+} 
