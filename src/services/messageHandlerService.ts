@@ -12,10 +12,40 @@ export interface UserBookingState {
     phoneNumber?: string;
     department?: string;
   };
+  reservationTime?: number; // Track when slot was reserved
 }
 
 // In-memory storage for user states (in production, consider using a database)
 const userStates = new Map<string, UserBookingState>();
+
+// Temporary reservations to prevent race conditions during booking process
+// In production, this should be in a database with TTL
+const temporaryReservations = new Map<string, { userId: string; timestamp: number }>();
+
+// Reservation timeout (5 minutes)
+const RESERVATION_TIMEOUT = 5 * 60 * 1000;
+
+// Clean up expired reservations
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, reservation] of temporaryReservations.entries()) {
+    if (now - reservation.timestamp > RESERVATION_TIMEOUT) {
+      temporaryReservations.delete(key);
+    }
+  }
+  
+  // Also clean up expired user states (30 minutes timeout)
+  for (const [userPhone, userState] of userStates.entries()) {
+    if (userState.reservationTime && (now - userState.reservationTime > 30 * 60 * 1000)) {
+      // Clear expired reservation
+      if (userState.selectedDate && userState.selectedSlot) {
+        const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
+        temporaryReservations.delete(reservationKey);
+      }
+      userStates.delete(userPhone);
+    }
+  }
+}, 60000); // Check every minute
 
 export class MessageHandlerService {
   // Handle incoming WhatsApp messages
@@ -43,6 +73,12 @@ export class MessageHandlerService {
       await this.sendWeeklyAvailability(userPhone);
     } else if (messageText.includes('cancel') || messageText.includes('stop')) {
       // Cancel booking flow
+      const userState = userStates.get(userPhone);
+      if (userState && userState.selectedDate && userState.selectedSlot) {
+        // Clear the temporary reservation
+        const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
+        temporaryReservations.delete(reservationKey);
+      }
       userStates.delete(userPhone);
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book appointment".')
@@ -120,10 +156,21 @@ export class MessageHandlerService {
       }
 
       // Format date for database (convert to yyyy-mm-dd)
-      const formattedDate = date.toISOString().split('T')[0];
-
-      // Get available slots for this date
-      const availability = await AppointmentService.getAvailableSlotsForDate(formattedDate);
+      // Use manual formatting to avoid timezone issues with toISOString()
+      const formattedDate = `${year.toString().padStart(4, '0')}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      
+      // Debug: Log the date conversion
+      console.log(`Date conversion: ${dateInput} (dd/mm/yyyy) -> ${formattedDate} (yyyy-mm-dd)`);
+      
+      // Test the conversion
+      const testConversion = this.testDateConversion(dateInput);
+      console.log(`Test conversion result: ${testConversion}`);
+      
+      // Get available slots for this date considering both database and temporary reservations
+      const availability = await this.getAvailableSlotsWithReservations(formattedDate);
+      
+      // Debug logging
+      console.log(`Date: ${formattedDate}, Available: ${availability.available.join(', ')}, Booked: ${availability.booked.join(', ')}, Reserved: ${availability.reserved.join(', ')}`);
       
       if (availability.error) {
         await WhatsAppService.sendMessage(
@@ -131,7 +178,7 @@ export class MessageHandlerService {
         );
         return;
       }
-
+      
       if (availability.available.length === 0) {
         await WhatsAppService.sendMessage(
           WhatsAppService.createTextMessage(userPhone, `📅 ${dateInput}\n\n❌ No available slots for this date.\n\nAll time slots are booked. Please choose a different date or type "cancel" to stop.`)
@@ -179,9 +226,24 @@ export class MessageHandlerService {
         return;
       }
 
+      // Check if slot is already reserved by another user
+      const reservationKey = `${userState.selectedDate}-${slot}`;
+      const existingReservation = temporaryReservations.get(reservationKey);
+      
+      if (existingReservation && existingReservation.userId !== userPhone) {
+        await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${slot} was just booked by another user. Please choose a different time slot.`)
+        );
+        return;
+      }
+
+      // Reserve this slot for this user
+      temporaryReservations.set(reservationKey, { userId: userPhone, timestamp: Date.now() });
+      
       // Update user state
       userState.selectedSlot = slot;
       userState.step = 'waiting_for_details';
+      userState.reservationTime = Date.now();
       userStates.set(userPhone, userState);
 
       // Ask for patient details
@@ -256,17 +318,7 @@ export class MessageHandlerService {
         return;
       }
 
-      // Check if slot is still available
-      const availability = await AppointmentService.getAvailableSlotsForDate(userState.selectedDate!);
-      if (!availability.available.includes(userState.selectedSlot!)) {
-        await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} is no longer available.\n\nPlease start over by typing "book appointment".`)
-        );
-        userStates.delete(userPhone);
-        return;
-      }
-
-      // Create appointment in database
+      // Create appointment in database (this will fail if slot is already taken)
       const appointment: CreateAppointmentRequest = {
         patientName,
         department: (department.charAt(0).toUpperCase() + department.slice(1).toLowerCase()) as 'Ortho' | 'ENT',
@@ -278,11 +330,27 @@ export class MessageHandlerService {
       const result = await AppointmentService.createAppointment(appointment);
       
       if (!result.success) {
-        await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, '❌ Sorry, there was an error creating your appointment. Please try again or contact the clinic directly.')
-        );
+        // Check if the failure is due to slot already being taken
+        if (result.error?.includes('already exists') || result.error?.includes('duplicate') || result.error?.includes('conflict')) {
+          await WhatsAppService.sendMessage(
+            WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} was just booked by another user.\n\nPlease start over by typing "book appointment" to choose a different time.`)
+          );
+        } else {
+          await WhatsAppService.sendMessage(
+            WhatsAppService.createTextMessage(userPhone, `❌ Sorry, there was an error creating your appointment: ${result.error}\n\nPlease try again or contact the clinic directly.`)
+          );
+        }
+        
+        // Clear the temporary reservation
+        const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
+        temporaryReservations.delete(reservationKey);
+        userStates.delete(userPhone);
         return;
       }
+
+      // Remove the temporary reservation since booking was successful
+      const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
+      temporaryReservations.delete(reservationKey);
 
       // Send confirmation and clear user state
       await WhatsAppService.sendMessage(
@@ -378,7 +446,7 @@ export class MessageHandlerService {
           day: 'numeric' 
         });
         
-        const availability = await AppointmentService.getAvailableSlotsForDate(date.toISOString().split('T')[0]);
+        const availability = await this.getAvailableSlotsWithReservations(date.toISOString().split('T')[0]);
         
         if (availability.error) {
           weeklyText += `${dateStr}: ❌ ${availability.error}\n`;
@@ -387,7 +455,13 @@ export class MessageHandlerService {
         } else {
           const availableCount = availability.available.length;
           const totalSlots = AVAILABLE_TIME_SLOTS.length;
-          weeklyText += `${dateStr}: ✅ ${availableCount}/${totalSlots} slots available\n`;
+          const reservedCount = availability.reserved.length;
+          
+          if (reservedCount > 0) {
+            weeklyText += `${dateStr}: ✅ ${availableCount}/${totalSlots} slots available (${reservedCount} temporarily reserved)\n`;
+          } else {
+            weeklyText += `${dateStr}: ✅ ${availableCount}/${totalSlots} slots available\n`;
+          }
         }
         weeklyText += '\n';
       }
@@ -407,5 +481,65 @@ export class MessageHandlerService {
         )
       );
     }
+  }
+
+  // Get available slots considering both database appointments and temporary reservations
+  private static async getAvailableSlotsWithReservations(date: string): Promise<{ available: string[], booked: string[], reserved: string[], error?: string }> {
+    try {
+      // Get availability from database
+      const availability = await AppointmentService.getAvailableSlotsForDate(date);
+      
+      if (availability.error) {
+        return { available: [], booked: [], reserved: [], error: availability.error };
+      }
+
+      // Get slots that are temporarily reserved
+      const reservedSlots: string[] = [];
+      for (const [key, reservation] of temporaryReservations.entries()) {
+        if (key.startsWith(`${date}-`)) {
+          const slot = key.split('-')[1];
+          reservedSlots.push(slot);
+        }
+      }
+
+      // Remove reserved slots from available slots
+      const trulyAvailable = availability.available.filter(slot => !reservedSlots.includes(slot));
+
+      // Debug logging
+      console.log(`getAvailableSlotsWithReservations for ${date}:`);
+      console.log(`  Database available: ${availability.available.join(', ')}`);
+      console.log(`  Database booked: ${availability.booked.join(', ')}`);
+      console.log(`  Temporary reserved: ${reservedSlots.join(', ')}`);
+      console.log(`  Final available: ${trulyAvailable.join(', ')}`);
+
+      return {
+        available: trulyAvailable,
+        booked: availability.booked,
+        reserved: reservedSlots
+      };
+    } catch (error) {
+      console.error('Error getting availability with reservations:', error);
+      return { available: [], booked: [], reserved: [], error: 'Error processing date' };
+    }
+  }
+
+  // Test method to verify date conversion
+  private static testDateConversion(dateInput: string): string {
+    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = dateInput.match(dateRegex);
+    
+    if (!match) {
+      return 'Invalid format';
+    }
+    
+    const day = parseInt(match[1]);
+    const month = parseInt(match[2]) - 1;
+    const year = parseInt(match[3]);
+    
+    // Manual formatting to avoid timezone issues
+    const formattedDate = `${year.toString().padStart(4, '0')}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    
+    console.log(`Date conversion test: "${dateInput}" -> "${formattedDate}"`);
+    return formattedDate;
   }
 } 

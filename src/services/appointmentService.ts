@@ -109,8 +109,18 @@ export class AppointmentService {
       // Get booked time slots
       const bookedSlots = appointments?.map(apt => apt.time_slot) || [];
       
+      // Debug logging
+      console.log(`getAvailableSlotsForDate for ${dateStr}:`);
+      console.log(`  Raw appointments from DB:`, appointments);
+      console.log(`  Booked slots: ${bookedSlots.join(', ')}`);
+      console.log(`  All available slots: ${AVAILABLE_TIME_SLOTS.join(', ')}`);
+      console.log(`  Input date: ${dateStr}, Type: ${typeof dateStr}`);
+      console.log(`  SQL Query: SELECT time_slot FROM appointments WHERE date = '${dateStr}'`);
+      
       // Find available slots (all slots minus booked ones)
       const availableSlots = AVAILABLE_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
+      
+      console.log(`  Final available slots: ${availableSlots.join(', ')}`);
 
       return {
         available: availableSlots,
@@ -126,6 +136,15 @@ export class AppointmentService {
   // Create new appointment
   static async createAppointment(appointment: CreateAppointmentRequest): Promise<{ success: boolean; error?: string }> {
     try {
+      // First, check if the slot is still available (double-check to prevent race conditions)
+      const availability = await this.getAvailableSlotsForDate(appointment.date);
+      if (!availability.available.includes(appointment.timeSlot)) {
+        return { 
+          success: false, 
+          error: `Time slot ${appointment.timeSlot} is no longer available for ${appointment.date}` 
+        };
+      }
+
       // Map camelCase to snake_case for database
       const dbAppointment = {
         date: appointment.date,
@@ -135,6 +154,10 @@ export class AppointmentService {
         patient_phone: appointment.patientPhone
       };
 
+      // Debug: Log what's being stored
+      console.log(`Creating appointment with date: ${appointment.date} (type: ${typeof appointment.date})`);
+      console.log(`Database appointment object:`, dbAppointment);
+
       const { error } = await supabase
         .from('appointments')
         .insert([dbAppointment])
@@ -142,6 +165,15 @@ export class AppointmentService {
 
       if (error) {
         console.error('Error creating appointment:', error);
+        
+        // Handle specific database errors
+        if (error.code === '23505') { // Unique constraint violation
+          return { 
+            success: false, 
+            error: `Time slot ${appointment.timeSlot} is no longer available for ${appointment.date} (already booked by another user)` 
+          };
+        }
+        
         return { success: false, error: 'Database error while creating appointment' };
       }
 
@@ -239,6 +271,67 @@ export class AppointmentService {
     } catch (error) {
       console.error('Error reading appointments from database:', error);
       return [];
+    }
+  }
+
+  // Debug method to check all appointments
+  static async debugAllAppointments(): Promise<void> {
+    try {
+      const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching all appointments:', error);
+        return;
+      }
+
+      console.log('=== DEBUG: All appointments in database ===');
+      console.log('Total appointments:', appointments?.length || 0);
+      appointments?.forEach((apt, index) => {
+        console.log(`${index + 1}. Date: ${apt.date}, Time: ${apt.time_slot}, Patient: ${apt.patient_name}, Phone: ${apt.patient_phone}`);
+      });
+      console.log('=== End debug ===');
+    } catch (error) {
+      console.error('Error in debugAllAppointments:', error);
+    }
+  }
+
+  // Debug method to test database connection and table structure
+  static async debugDatabaseConnection(): Promise<void> {
+    try {
+      console.log('=== DEBUG: Testing database connection ===');
+      
+      // Test basic connection
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('count')
+        .limit(1);
+      
+      if (error) {
+        console.error('Database connection error:', error);
+        return;
+      }
+      
+      console.log('Database connection successful');
+      
+      // Test table structure
+      const { data: structure, error: structureError } = await supabase
+        .from('appointments')
+        .select('*')
+        .limit(0);
+      
+      if (structureError) {
+        console.error('Table structure error:', structureError);
+        return;
+      }
+      
+      console.log('Table structure check successful');
+      console.log('=== End database connection test ===');
+      
+    } catch (error) {
+      console.error('Error in debugDatabaseConnection:', error);
     }
   }
 } 
