@@ -49,6 +49,11 @@ setInterval(() => {
 }, 60000); // Check every minute
 
 export class MessageHandlerService {
+  // Helper function to convert internal department names to user-friendly names
+  private static getDisplayDepartmentName(department: 'Ortho' | 'ENT'): string {
+    return department === 'Ortho' ? 'Orthopedics' : department;
+  }
+
   // Normalize phone number for comparison (remove country code, spaces, dashes, etc.)
   private static normalizePhoneNumber(phone: string): string {
     // Remove all non-digit characters
@@ -119,7 +124,7 @@ export class MessageHandlerService {
   private static async askForDepartment(recipientPhone: string): Promise<void> {
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      '🏥 Please select your department:\n\n1️⃣ Ortho\n2️⃣ ENT\n\nType "cancel" to stop the booking process.'
+      '🏥 Please select your department:\n\n1️⃣ Orthopedics\n2️⃣ ENT\n\nType "1" for Orthopedics or "2" for ENT.\nType "cancel" to stop the booking process.'
     );
     await WhatsAppService.sendMessage(message);
   }
@@ -127,16 +132,16 @@ export class MessageHandlerService {
   // Step 2: Handle department selection
   private static async handleDepartmentSelection(userPhone: string, departmentInput: string, userState: UserBookingState): Promise<void> {
     try {
-      // Clean the input - remove any extra spaces and convert to lowercase for comparison
-      const department = departmentInput.trim().toLowerCase();
+      // Clean the input - remove any extra spaces
+      const department = departmentInput.trim();
       
-      if (department === 'ortho') {
+      if (department === '1' || department === 'ortho') {
         userState.selectedDepartment = 'Ortho';
-      } else if (department === 'ent') {
+      } else if (department === '2' || department === 'ent') {
         userState.selectedDepartment = 'ENT';
       } else {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, '❌ Invalid department selection. Please choose "Ortho" or "ENT".')
+          WhatsAppService.createTextMessage(userPhone, '❌ Invalid department selection. Please type "1" for Orthopedics or "2" for ENT.')
         );
         return;
       }
@@ -159,7 +164,7 @@ export class MessageHandlerService {
   // Step 1: Ask user for date
   private static async askForDate(recipientPhone: string): Promise<void> {
     const userState = userStates.get(recipientPhone);
-    const department = userState?.selectedDepartment || 'your selected department';
+    const department = userState?.selectedDepartment ? this.getDisplayDepartmentName(userState.selectedDepartment) : 'your selected department';
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
@@ -269,10 +274,11 @@ export class MessageHandlerService {
   // Show available slots as text (instead of buttons)
   private static async showAvailableSlotsAsText(recipientPhone: string, date: string, availableSlots: string[], department: 'Ortho' | 'ENT'): Promise<void> {
     const slotsText = availableSlots.join(', ');
+    const displayDepartment = this.getDisplayDepartmentName(department);
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date} (${department}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "1:00"):`
+      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "1:00"):`
     );
 
     await WhatsAppService.sendMessage(message);
@@ -324,9 +330,10 @@ export class MessageHandlerService {
 
   // Ask for patient details
   private static async askForPatientDetails(recipientPhone: string, date: string, time: string, department: 'Ortho' | 'ENT'): Promise<void> {
+    const displayDepartment = this.getDisplayDepartmentName(department);
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📋 Great! You've selected ${date} at ${time} for ${department}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, 1234567890\n\nType "cancel" to start over.`
+      `📋 Great! You've selected ${date} at ${time} for ${displayDepartment}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, 1234567890\n\nType "cancel" to start over.`
     );
     await WhatsAppService.sendMessage(message);
   }
@@ -384,8 +391,9 @@ export class MessageHandlerService {
       if (!result.success) {
         // Check if the failure is due to slot already being taken
         if (result.error?.includes('already exists') || result.error?.includes('duplicate') || result.error?.includes('conflict')) {
+                  const displayDepartment = this.getDisplayDepartmentName(userState.selectedDepartment!);
                   await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} for ${userState.selectedDepartment} was just booked by another user.\n\nPlease start over by typing "book" to choose a different time.`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} for ${displayDepartment} was just booked by another user.\n\nPlease start over by typing "book" to choose a different time.`)
         );
         } else {
           await WhatsAppService.sendMessage(
@@ -405,10 +413,11 @@ export class MessageHandlerService {
         temporaryReservations.delete(reservationKey);
 
       // Send confirmation and clear user state
+      const displayDepartment = this.getDisplayDepartmentName(userState.selectedDepartment!);
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(
           userPhone,
-          `✅ Appointment Confirmed!\n\n📋 Details:\n👤 Patient: ${patientName}\n🏥 Department: ${userState.selectedDepartment}\n📅 Date: ${userState.selectedDate}\n⏰ Time: ${userState.selectedSlot}\n📱 Phone: ${phone}\n\nYour appointment has been scheduled. We'll contact you to confirm the details.`
+          `✅ Appointment Confirmed!\n\n📋 Details:\n👤 Patient: ${patientName}\n🏥 Department: ${displayDepartment}\n📅 Date: ${userState.selectedDate}\n⏰ Time: ${userState.selectedSlot}\n📱 Phone: ${phone}\n\nYour appointment has been scheduled. We'll contact you to confirm the details.`
         )
       );
 
@@ -480,9 +489,10 @@ export class MessageHandlerService {
 
     let appointmentText = '📋 Your Future Appointments:\n\n';
     userAppointments.forEach((apt, index) => {
+      const displayDepartment = this.getDisplayDepartmentName(apt.department as 'Ortho' | 'ENT');
       appointmentText += `${index + 1}. ${apt.patientName}\n`;
       appointmentText += `   📅 ${apt.date} at ${apt.timeSlot}\n`;
-      appointmentText += `   🏥 ${apt.department}\n\n`;
+      appointmentText += `   🏥 ${displayDepartment}\n\n`;
     });
 
     await WhatsAppService.sendMessage(
@@ -547,16 +557,16 @@ export class MessageHandlerService {
         weeklyText += `${dateStr}:\n`;
         
         if (orthoAvailability.error) {
-          weeklyText += `  🦴 Ortho: ❌ ${orthoAvailability.error}\n`;
+          weeklyText += `  🦴 Orthopedics: ❌ ${orthoAvailability.error}\n`;
         } else {
           const orthoAvailableCount = orthoAvailability.available.length;
           const totalSlots = AVAILABLE_TIME_SLOTS.length;
           const orthoReservedCount = orthoAvailability.reserved.length;
           
           if (orthoReservedCount > 0) {
-            weeklyText += `  🦴 Ortho: ✅ ${orthoAvailableCount}/${totalSlots} slots available (${orthoReservedCount} temporarily reserved)\n`;
+            weeklyText += `  🦴 Orthopedics: ✅ ${orthoAvailableCount}/${totalSlots} slots available (${orthoReservedCount} temporarily reserved)\n`;
           } else {
-            weeklyText += `  🦴 Ortho: ✅ ${orthoAvailableCount}/${totalSlots} slots available\n`;
+            weeklyText += `  🦴 Orthopedics: ✅ ${orthoAvailableCount}/${totalSlots} slots available\n`;
           }
         }
         
