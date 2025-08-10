@@ -4,7 +4,7 @@ import type { Appointment, CreateAppointmentRequest } from '../types/appointment
 // Available time slots (weekdays only)
 export const AVAILABLE_TIME_SLOTS = [
   '10:30', '10:45', '11:15', '11:30', '12:00', 
-  '12:15', '12:30', '1:00', '1:30', '1:45'
+  '12:15', '12:30', '13:00', '13:30', '13:45'
 ];
 
 // Weekday names for validation

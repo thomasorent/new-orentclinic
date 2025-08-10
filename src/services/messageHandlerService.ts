@@ -14,6 +14,7 @@ export interface UserBookingState {
     department?: string;
   };
   reservationTime?: number; // Track when slot was reserved
+  lastActivityTime?: number; // Track when user was last active
 }
 
 // In-memory storage for user states (in production, consider using a database)
@@ -35,15 +36,26 @@ setInterval(() => {
     }
   }
   
-  // Also clean up expired user states (30 minutes timeout)
+    // Also clean up expired user states (30 minutes timeout)
   for (const [userPhone, userState] of userStates.entries()) {
+    console.log(`Checking user state for cleanup: ${userPhone}, step: ${userState.step}, reservationTime: ${userState.reservationTime}`);
+    
     if (userState.reservationTime && (now - userState.reservationTime > 30 * 60 * 1000)) {
       // Clear expired reservation
       if (userState.selectedDate && userState.selectedSlot) {
         const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
         temporaryReservations.delete(reservationKey);
       }
+      console.log(`Clearing expired user state for ${userPhone}`);
       userStates.delete(userPhone);
+    } else if (!userState.reservationTime && userState.step !== 'idle') {
+      // Clear user states that have been in non-idle steps for too long (e.g., 10 minutes)
+      // This prevents users from getting stuck in intermediate steps
+      const userStateAge = now - (userState.lastActivityTime || now);
+      if (userStateAge > 10 * 60 * 1000) { // 10 minutes
+        console.log(`Clearing stale user state for ${userPhone} (step: ${userState.step}, age: ${userStateAge}ms)`);
+        userStates.delete(userPhone);
+      }
     }
   }
 }, 60000); // Check every minute
@@ -76,14 +88,32 @@ export class MessageHandlerService {
   }): Promise<void> {
     const userPhone = message.from;
     const messageText = message.text?.body?.toLowerCase() || '';
+    
+    // Debug: Log the raw message data
+    console.log(`Raw message:`, message);
+    console.log(`Phone number: "${userPhone}"`);
 
     // Get or create user state
     const userState = userStates.get(userPhone) || { step: 'idle' };
+    
+    // Update last activity time
+    userState.lastActivityTime = Date.now();
+    
+    // Save the updated user state
+    userStates.set(userPhone, userState);
+    
+    // Debug logging
+    console.log(`Message from ${userPhone}: "${messageText}"`);
+    console.log(`Current user state:`, userState);
+    console.log(`All user states:`, Array.from(userStates.entries()));
 
     if (messageText.includes('book')) {
       // Start booking flow
+      console.log(`Starting booking flow for ${userPhone}`);
       userState.step = 'waiting_for_department';
+      userState.lastActivityTime = Date.now();
       userStates.set(userPhone, userState);
+      console.log(`Set user state to waiting_for_department:`, userStates.get(userPhone));
       await this.askForDepartment(userPhone);
     } else if (messageText.includes('my appointments') || messageText.includes('check')) {
       await this.sendUserAppointments(userPhone);
@@ -93,29 +123,35 @@ export class MessageHandlerService {
       await this.sendWeeklyAvailability(userPhone);
     } else if (messageText.includes('cancel') || messageText.includes('stop')) {
       // Cancel booking flow
-      const userState = userStates.get(userPhone);
-      if (userState && userState.selectedDate && userState.selectedSlot) {
+      const existingUserState = userStates.get(userPhone);
+      if (existingUserState && existingUserState.selectedDate && existingUserState.selectedSlot) {
         // Clear the temporary reservation
-        const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
+        const reservationKey = `${existingUserState.selectedDate}-${existingUserState.selectedDepartment}-${existingUserState.selectedSlot}`;
         temporaryReservations.delete(reservationKey);
       }
+      console.log(`Clearing user state for ${userPhone} due to cancellation`);
       userStates.delete(userPhone);
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book".')
       );
     } else if (userState.step === 'waiting_for_department') {
       // User provided a department
+      console.log(`Handling department selection for step: ${userState.step}`);
       await this.handleDepartmentSelection(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_date') {
       // User provided a date
+      console.log(`Handling date selection for step: ${userState.step}`);
       await this.handleDateSelection(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_slot') {
       // User provided a time slot as text
+      console.log(`Handling slot selection for step: ${userState.step}`);
       await this.handleSlotSelection(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_details') {
       // User providing patient details
+      console.log(`Handling patient details for step: ${userState.step}`);
       await this.handlePatientDetails(userPhone, messageText, userState);
     } else {
+      console.log(`No matching step found, sending welcome message. Step was: ${userState.step}`);
       await this.sendWelcomeMessage(userPhone);
     }
   }
@@ -137,9 +173,12 @@ export class MessageHandlerService {
       
       if (department === '1' || department === 'ortho') {
         userState.selectedDepartment = 'Ortho';
+        console.log(`User selected Ortho department`);
       } else if (department === '2' || department === 'ent') {
         userState.selectedDepartment = 'ENT';
+        console.log(`User selected ENT department`);
       } else {
+        console.log(`Invalid department selection: "${department}"`);
         await WhatsAppService.sendMessage(
           WhatsAppService.createTextMessage(userPhone, '❌ Invalid department selection. Please type "1" for Orthopedics or "2" for ENT.')
         );
@@ -148,7 +187,12 @@ export class MessageHandlerService {
 
       // Update user state
       userState.step = 'waiting_for_date';
+      userState.lastActivityTime = Date.now();
       userStates.set(userPhone, userState);
+      
+      // Debug logging
+      console.log(`Updated user state for ${userPhone}:`, userState);
+      console.log(`Stored user state:`, userStates.get(userPhone));
 
       // Ask for date
       await this.askForDate(userPhone);
@@ -176,11 +220,15 @@ export class MessageHandlerService {
   // Step 2: Handle date selection and show available slots
   private static async handleDateSelection(userPhone: string, dateInput: string, userState: UserBookingState): Promise<void> {
     try {
+      console.log(`Handling date selection for ${userPhone}: "${dateInput}"`);
+      console.log(`User state at start of date selection:`, userState);
+      
       // Validate date format - only accept dd/mm/yyyy
       const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
       const match = dateInput.match(dateRegex);
       
       if (!match) {
+        console.log(`Invalid date format: "${dateInput}"`);
         await WhatsAppService.sendMessage(
           WhatsAppService.createTextMessage(userPhone, '❌ Invalid date format. Please use dd/mm/yyyy format (e.g., 25/12/2024).')
         );
@@ -259,7 +307,11 @@ export class MessageHandlerService {
       // Update user state and show available slots as buttons
       userState.selectedDate = formattedDate; // Store formatted date for database
       userState.step = 'waiting_for_slot';
+      userState.lastActivityTime = Date.now();
       userStates.set(userPhone, userState);
+      
+      console.log(`Updated user state after date selection:`, userState);
+      console.log(`Stored user state:`, userStates.get(userPhone));
 
       await this.showAvailableSlotsAsText(userPhone, dateInput, availability.available, userState.selectedDepartment!);
 
@@ -278,7 +330,7 @@ export class MessageHandlerService {
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "1:00"):`
+      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "13:00"):`
     );
 
     await WhatsAppService.sendMessage(message);
@@ -287,6 +339,9 @@ export class MessageHandlerService {
   // Step 3: Handle slot selection (now handles text input instead of button clicks)
   private static async handleSlotSelection(userPhone: string, slotInput: string, userState: UserBookingState): Promise<void> {
     try {
+      console.log(`Handling slot selection for ${userPhone}: "${slotInput}"`);
+      console.log(`User state at start of slot selection:`, userState);
+      
       // Clean the input - remove any extra spaces and convert to lowercase for comparison
       const slot = slotInput.trim();
       
@@ -315,7 +370,11 @@ export class MessageHandlerService {
       userState.selectedSlot = slot;
       userState.step = 'waiting_for_details';
       userState.reservationTime = Date.now();
+      userState.lastActivityTime = Date.now();
       userStates.set(userPhone, userState);
+      
+      console.log(`Updated user state after slot selection:`, userState);
+      console.log(`Stored user state:`, userStates.get(userPhone));
 
       // Ask for patient details
       await this.askForPatientDetails(userPhone, userState.selectedDate!, slot, userState.selectedDepartment!);
@@ -341,6 +400,9 @@ export class MessageHandlerService {
   // Step 4: Handle patient details and complete booking
   private static async handlePatientDetails(userPhone: string, messageText: string, userState: UserBookingState): Promise<void> {
     try {
+      console.log(`Handling patient details for ${userPhone}: "${messageText}"`);
+      console.log(`User state at start of patient details:`, userState);
+      
       // Parse the message to extract patient details
       // First try comma-separated format, then fall back to line-by-line format
       let patientName = '';
@@ -378,6 +440,8 @@ export class MessageHandlerService {
       }
 
       // Create appointment in database (this will fail if slot is already taken)
+      console.log(`Creating appointment with data:`, { patientName, department: userState.selectedDepartment, date: userState.selectedDate, timeSlot: userState.selectedSlot, patientPhone: phone });
+      
       const appointment: CreateAppointmentRequest = {
         patientName,
         department: userState.selectedDepartment!,
@@ -389,6 +453,8 @@ export class MessageHandlerService {
       const result = await AppointmentService.createAppointment(appointment);
       
       if (!result.success) {
+        console.log(`Failed to create appointment for ${userPhone}: ${result.error}`);
+        
         // Check if the failure is due to slot already being taken
         if (result.error?.includes('already exists') || result.error?.includes('duplicate') || result.error?.includes('conflict')) {
                   const displayDepartment = this.getDisplayDepartmentName(userState.selectedDepartment!);
@@ -404,6 +470,7 @@ export class MessageHandlerService {
                   // Clear the temporary reservation
           const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
           temporaryReservations.delete(reservationKey);
+          console.log(`Clearing user state for ${userPhone} due to failure`);
           userStates.delete(userPhone);
         return;
       }
@@ -414,6 +481,8 @@ export class MessageHandlerService {
 
       // Send confirmation and clear user state
       const displayDepartment = this.getDisplayDepartmentName(userState.selectedDepartment!);
+      console.log(`Appointment created successfully for ${userPhone}`);
+      
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(
           userPhone,
@@ -422,6 +491,7 @@ export class MessageHandlerService {
       );
 
       // Clear user state
+      console.log(`Clearing user state for ${userPhone}`);
       userStates.delete(userPhone);
 
     } catch (error) {
