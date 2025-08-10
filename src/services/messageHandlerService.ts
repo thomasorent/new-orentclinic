@@ -495,7 +495,7 @@ export class MessageHandlerService {
 
       // Get slots that are temporarily reserved
       const reservedSlots: string[] = [];
-      for (const [key, reservation] of temporaryReservations.entries()) {
+      for (const [key] of temporaryReservations.entries()) {
         if (key.startsWith(`${date}-`)) {
           const slot = key.split('-')[1];
           reservedSlots.push(slot);

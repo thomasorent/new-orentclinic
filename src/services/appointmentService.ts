@@ -304,7 +304,7 @@ export class AppointmentService {
       console.log('=== DEBUG: Testing database connection ===');
       
       // Test basic connection
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('appointments')
         .select('count')
         .limit(1);
@@ -317,7 +317,7 @@ export class AppointmentService {
       console.log('Database connection successful');
       
       // Test table structure
-      const { data: structure, error: structureError } = await supabase
+      const { error: structureError } = await supabase
         .from('appointments')
         .select('*')
         .limit(0);
