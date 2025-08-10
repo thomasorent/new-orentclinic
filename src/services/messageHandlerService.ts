@@ -330,7 +330,7 @@ export class MessageHandlerService {
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "13:00"):`
+      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "13:00"):\n\n⚠️ Note: Slots are checked for availability when you select them.`
     );
 
     await WhatsAppService.sendMessage(message);
@@ -352,13 +352,31 @@ export class MessageHandlerService {
         return;
       }
 
+      // Immediately check if the slot is still available in the database
+      const currentAvailability = await AppointmentService.getAvailableSlotsForDate(userState.selectedDate!, userState.selectedDepartment!);
+      
+      if (currentAvailability.error) {
+        await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, there was an error checking slot availability. Please try again or type "cancel" to start over.`)
+        );
+        return;
+      }
+
+      // Check if the slot is still available in the database
+      if (!currentAvailability.available.includes(slot)) {
+        await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${slot} is no longer available. It may have been booked by another user.\n\nPlease choose a different time slot from the available options.`)
+        );
+        return;
+      }
+
       // Check if slot is already reserved by another user
       const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${slot}`;
       const existingReservation = temporaryReservations.get(reservationKey);
       
       if (existingReservation && existingReservation.userId !== userPhone) {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${slot} was just booked by another user. Please choose a different time slot.`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${slot} was just reserved by another user. Please choose a different time slot.`)
         );
         return;
       }
