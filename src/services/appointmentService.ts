@@ -135,7 +135,7 @@ export class AppointmentService {
         patient_phone: appointment.patientPhone
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('appointments')
         .insert([dbAppointment])
         .select();
@@ -163,7 +163,7 @@ export class AppointmentService {
       if (updates.department) dbUpdates.department = updates.department;
       if (updates.patientPhone) dbUpdates.patient_phone = updates.patientPhone;
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('appointments')
         .update(dbUpdates)
         .eq('id', id)
