@@ -312,19 +312,22 @@ export class MessageHandlerService {
         return;
       }
 
-      // Validate department
-      const validDepartments = ['ortho', 'ent'];
-      if (!validDepartments.includes(department.toLowerCase())) {
+      // Validate department (case-insensitive)
+      const departmentLower = department.toLowerCase();
+      if (departmentLower !== 'ortho' && departmentLower !== 'ent') {
         await WhatsAppService.sendMessage(
           WhatsAppService.createTextMessage(userPhone, '❌ Invalid department. Please choose either "Ortho" or "ENT".')
         );
         return;
       }
 
+      // Normalize department to proper case format
+      const normalizedDepartment = departmentLower === 'ortho' ? 'Ortho' : 'ENT';
+
       // Create appointment in database (this will fail if slot is already taken)
       const appointment: CreateAppointmentRequest = {
         patientName,
-        department: (department.charAt(0).toUpperCase() + department.slice(1).toLowerCase()) as 'Ortho' | 'ENT',
+        department: normalizedDepartment as 'Ortho' | 'ENT',
         date: userState.selectedDate!,
         timeSlot: userState.selectedSlot!,
         patientPhone: phone
