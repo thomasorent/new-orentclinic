@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Test database connection
 export async function testConnection(): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('appointments')
       .select('id')
       .limit(1);
