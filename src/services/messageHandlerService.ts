@@ -172,6 +172,9 @@ export class MessageHandlerService {
       // Debug logging
       console.log(`Date: ${formattedDate}, Available: ${availability.available.join(', ')}, Booked: ${availability.booked.join(', ')}, Reserved: ${availability.reserved.join(', ')}`);
       
+      // Debug: Check database schema to understand time format
+      await AppointmentService.debugDatabaseSchema();
+      
       if (availability.error) {
         await WhatsAppService.sendMessage(
           WhatsAppService.createTextMessage(userPhone, `❌ ${availability.error}\n\nPlease try a different date.`)

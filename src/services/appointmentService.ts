@@ -109,22 +109,29 @@ export class AppointmentService {
       // Get booked time slots
       const bookedSlots = appointments?.map(apt => apt.time_slot) || [];
       
+      // Normalize booked slots to remove seconds (e.g., "10:30:00" -> "10:30")
+      const normalizedBookedSlots = bookedSlots.map(slot => {
+        // Remove seconds if present (e.g., "10:30:00" -> "10:30")
+        return slot.split(':').slice(0, 2).join(':');
+      });
+      
       // Debug logging
       console.log(`getAvailableSlotsForDate for ${dateStr}:`);
       console.log(`  Raw appointments from DB:`, appointments);
-      console.log(`  Booked slots: ${bookedSlots.join(', ')}`);
+      console.log(`  Raw booked slots: ${bookedSlots.join(', ')}`);
+      console.log(`  Normalized booked slots: ${normalizedBookedSlots.join(', ')}`);
       console.log(`  All available slots: ${AVAILABLE_TIME_SLOTS.join(', ')}`);
       console.log(`  Input date: ${dateStr}, Type: ${typeof dateStr}`);
       console.log(`  SQL Query: SELECT time_slot FROM appointments WHERE date = '${dateStr}'`);
       
       // Find available slots (all slots minus booked ones)
-      const availableSlots = AVAILABLE_TIME_SLOTS.filter(slot => !bookedSlots.includes(slot));
+      const availableSlots = AVAILABLE_TIME_SLOTS.filter(slot => !normalizedBookedSlots.includes(slot));
       
       console.log(`  Final available slots: ${availableSlots.join(', ')}`);
 
       return {
         available: availableSlots,
-        booked: bookedSlots
+        booked: normalizedBookedSlots
       };
 
     } catch (error) {
@@ -156,6 +163,7 @@ export class AppointmentService {
 
       // Debug: Log what's being stored
       console.log(`Creating appointment with date: ${appointment.date} (type: ${typeof appointment.date})`);
+      console.log(`Creating appointment with time: ${appointment.timeSlot} (type: ${typeof appointment.timeSlot})`);
       console.log(`Database appointment object:`, dbAppointment);
 
       const { error } = await supabase
@@ -176,6 +184,9 @@ export class AppointmentService {
         
         return { success: false, error: 'Database error while creating appointment' };
       }
+
+      // Debug: Log what was actually stored
+      console.log(`Appointment created successfully. Time slot stored as: ${appointment.timeSlot}`);
 
       return { success: true };
     } catch (error) {
@@ -332,6 +343,38 @@ export class AppointmentService {
       
     } catch (error) {
       console.error('Error in debugDatabaseConnection:', error);
+    }
+  }
+
+  // Debug method to check database schema
+  static async debugDatabaseSchema(): Promise<void> {
+    try {
+      console.log('=== DEBUG: Database Schema Check ===');
+      
+      // Try to get column information by selecting one row
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .limit(1);
+      
+      if (error) {
+        console.error('Error fetching schema info:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const row = data[0];
+        console.log('Sample row structure:');
+        Object.keys(row).forEach(key => {
+          const value = row[key];
+          console.log(`  ${key}: ${value} (type: ${typeof value})`);
+        });
+      }
+      
+      console.log('=== End schema check ===');
+      
+    } catch (error) {
+      console.error('Error in debugDatabaseSchema:', error);
     }
   }
 } 
