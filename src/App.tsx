@@ -1,6 +1,5 @@
 import './App.css'
 import Chatbot from './components/Chatbot'
-import AppointmentManager from './components/AppointmentManager'
 import { useState } from 'react'
 import { WhatsAppIcon } from './components/Icons';
 
