@@ -1,5 +1,6 @@
 import './App.css'
 import Chatbot from './components/Chatbot'
+import AppointmentManager from './components/AppointmentManager'
 import { useState } from 'react'
 import { WhatsAppIcon } from './components/Icons';
 
@@ -208,20 +209,10 @@ function App() {
         </div>
       </section>
 
-      {/* Book an Appointment */}
-      {/* <section className="appointment-section" id="appointments">
+     {/* Book an Appointment */}
+     {/* <section className="appointment-section" id="appointments">
         <h2>{en.appointmentTitle}</h2>
-        <form className="appointment-form">
-          <input type="text" placeholder={en.appointment.name} required />
-          <input type="tel" placeholder={en.appointment.phone} required />
-          <select required>
-            <option value="">{en.appointment.choose}</option>
-            <option value="ortho">{en.appointment.ortho}</option>
-            <option value="ent">{en.appointment.ent}</option>
-          </select>
-          <input type="datetime-local" required />
-          <button type="submit">{en.appointment.submit}</button>
-        </form>
+        <AppointmentManager />
       </section> */}
 
       {/* Clinic Hours & Fees */}
