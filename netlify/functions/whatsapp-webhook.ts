@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions';
-import { pool, initializeDatabase } from '../../src/config/database';
+import { supabase, initializeDatabase } from '../../src/config/database';
 
 interface WhatsAppMessage {
   object: string;
@@ -146,13 +146,17 @@ export const handler: Handler = async (event, context) => {
 // Read appointments from database
 async function readAppointments(): Promise<any[]> {
   try {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT * FROM appointments ORDER BY time_slot ASC');
-      return result.rows;
-    } finally {
-      client.release();
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .order('time_slot', { ascending: true });
+    
+    if (error) {
+      console.error('Error reading appointments from database:', error);
+      return [];
     }
+    
+    return data || [];
   } catch (error) {
     console.error('Error reading appointments from database:', error);
     return [];

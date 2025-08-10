@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions';
-import { pool, initializeDatabase } from '../../src/config/database';
+import { supabase, initializeDatabase } from '../../src/config/database';
 
 interface Appointment {
   id: number;
@@ -38,33 +38,23 @@ async function ensureDatabaseInitialized(): Promise<void> {
   }
 }
 
-// Build WHERE clause for filtering
-function buildWhereClause(query: Record<string, string>): { clause: string; params: any[] } {
-  const conditions: string[] = [];
-  const params: any[] = [];
-  let paramIndex = 1;
+// Build filter for Supabase queries
+function buildFilter(query: Record<string, string>): any {
+  const filter: any = {};
 
   if (query.department) {
-    conditions.push(`department = $${paramIndex++}`);
-    params.push(query.department);
+    filter.department = query.department;
   }
 
   if (query.date) {
-    conditions.push(`date = $${paramIndex++}`);
-    params.push(query.date);
+    filter.date = query.date;
   }
 
   if (query.phone) {
-    conditions.push(`patient_phone = $${paramIndex++}`);
-    params.push(query.phone);
+    filter.patient_phone = query.phone;
   }
 
-  if (query.upcoming === 'true') {
-    conditions.push(`(date > CURRENT_DATE OR (date = CURRENT_DATE AND time_slot > CURRENT_TIME))`);
-  }
-
-  const clause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  return { clause, params };
+  return filter;
 }
 
 export const handler: Handler = async (event, context) => {
@@ -92,48 +82,67 @@ export const handler: Handler = async (event, context) => {
       if (event.path.includes('/appointments/')) {
         // Get specific appointment by ID
         const id = event.path.split('/').pop();
-        const client = await pool.connect();
         
-        try {
-          const result = await client.query(
-            'SELECT * FROM appointments WHERE id = $1',
-            [id]
-          );
-          
-          if (result.rows.length === 0) {
-            return {
-              statusCode: 404,
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ error: 'Appointment not found' }),
-            };
-          }
-
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (error || !data) {
           return {
-            statusCode: 200,
+            statusCode: 404,
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify(result.rows[0]),
+            body: JSON.stringify({ error: 'Appointment not found' }),
           };
-        } finally {
-          client.release();
         }
+
+        return {
+          statusCode: 200,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        };
       } else {
         // Get all appointments with optional filtering
         const queryParams = event.queryStringParameters || {};
-        const { clause, params } = buildWhereClause(queryParams as Record<string, string>);
+        const filter = buildFilter(queryParams as Record<string, string>);
         
-        const client = await pool.connect();
-        try {
-          const query = `SELECT * FROM appointments ${clause} ORDER BY date ASC, time_slot ASC`;
-          const result = await client.query(query, params);
+        let query = supabase
+          .from('appointments')
+          .select('*')
+          .order('date', { ascending: true })
+          .order('time_slot', { ascending: true });
 
-          return {
-            statusCode: 200,
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify(result.rows),
-          };
-        } finally {
-          client.release();
+        // Apply filters
+        if (filter.department) {
+          query = query.eq('department', filter.department);
         }
+        if (filter.date) {
+          query = query.eq('date', filter.date);
+        }
+        if (filter.patient_phone) {
+          query = query.eq('patient_phone', filter.patient_phone);
+        }
+        if (queryParams.upcoming === 'true') {
+          query = query.gt('date', new Date().toISOString().split('T')[0]);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching appointments:', error);
+          return {
+            statusCode: 500,
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ error: 'Failed to fetch appointments' }),
+          };
+        }
+
+        return {
+          statusCode: 200,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(data || []),
+        };
       }
     }
 
@@ -150,23 +159,32 @@ export const handler: Handler = async (event, context) => {
         };
       }
 
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          `INSERT INTO appointments (date, time_slot, patient_name, department, patient_phone)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING *`,
-          [body.date, body.timeSlot, body.patientName, body.department, body.patientPhone]
-        );
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert({
+          date: body.date,
+          time_slot: body.timeSlot,
+          patient_name: body.patientName,
+          department: body.department,
+          patient_phone: body.patientPhone,
+        })
+        .select()
+        .single();
 
+      if (error) {
+        console.error('Error creating appointment:', error);
         return {
-          statusCode: 201,
+          statusCode: 500,
           headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify(result.rows[0]),
+          body: JSON.stringify({ error: 'Failed to create appointment' }),
         };
-      } finally {
-        client.release();
       }
+
+      return {
+        statusCode: 201,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      };
     }
 
     // PUT - Update appointment
@@ -174,98 +192,66 @@ export const handler: Handler = async (event, context) => {
       const id = event.path.split('/').pop();
       const updateData: UpdateAppointmentRequest = JSON.parse(event.body || '{}');
       
-      const client = await pool.connect();
-      try {
-        // Build dynamic update query
-        const updateFields: string[] = [];
-        const params: any[] = [];
-        let paramIndex = 1;
+      // Build update object
+      const updateFields: any = {};
+      if (updateData.date !== undefined) updateFields.date = updateData.date;
+      if (updateData.timeSlot !== undefined) updateFields.time_slot = updateData.timeSlot;
+      if (updateData.patientName !== undefined) updateFields.patient_name = updateData.patientName;
+      if (updateData.department !== undefined) updateFields.department = updateData.department;
+      if (updateData.patientPhone !== undefined) updateFields.patient_phone = updateData.patientPhone;
 
-        if (updateData.date !== undefined) {
-          updateFields.push(`date = $${paramIndex++}`);
-          params.push(updateData.date);
-        }
-        if (updateData.timeSlot !== undefined) {
-          updateFields.push(`time_slot = $${paramIndex++}`);
-          params.push(updateData.timeSlot);
-        }
-        if (updateData.patientName !== undefined) {
-          updateFields.push(`patient_name = $${paramIndex++}`);
-          params.push(updateData.patientName);
-        }
-        if (updateData.department !== undefined) {
-          updateFields.push(`department = $${paramIndex++}`);
-          params.push(updateData.department);
-        }
-        if (updateData.patientPhone !== undefined) {
-          updateFields.push(`patient_phone = $${paramIndex++}`);
-          params.push(updateData.patientPhone);
-        }
-
-        if (updateFields.length === 0) {
-          return {
-            statusCode: 400,
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'No fields to update' }),
-          };
-        }
-
-        params.push(id);
-        const query = `UPDATE appointments SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`;
-        
-        const result = await client.query(query, params);
-        
-        if (result.rowCount === 0) {
-          return {
-            statusCode: 404,
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'Appointment not found' }),
-          };
-        }
-
-        // Get updated appointment
-        const updatedResult = await client.query(
-          'SELECT * FROM appointments WHERE id = $1',
-          [id]
-        );
-
+      if (Object.keys(updateFields).length === 0) {
         return {
-          statusCode: 200,
+          statusCode: 400,
           headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedResult.rows[0]),
+          body: JSON.stringify({ error: 'No fields to update' }),
         };
-      } finally {
-        client.release();
       }
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .update(updateFields)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error || !data) {
+        return {
+          statusCode: 404,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: 'Appointment not found' }),
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      };
     }
 
     // DELETE - Delete appointment
     if (event.httpMethod === 'DELETE') {
       const id = event.path.split('/').pop();
       
-      const client = await pool.connect();
-      try {
-        const result = await client.query(
-          'DELETE FROM appointments WHERE id = $1',
-          [id]
-        );
-        
-        if (result.rowCount === 0) {
-          return {
-            statusCode: 404,
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ error: 'Appointment not found' }),
-          };
-        }
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', id);
 
+      if (error) {
         return {
-          statusCode: 200,
+          statusCode: 404,
           headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: 'Appointment deleted successfully' }),
+          body: JSON.stringify({ error: 'Appointment not found' }),
         };
-      } finally {
-        client.release();
       }
+
+      return {
+        statusCode: 200,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Appointment deleted successfully' }),
+      };
     }
 
     return {
