@@ -28,7 +28,7 @@ export class MessageHandlerService {
     const messageText = message.text?.body?.toLowerCase() || '';
 
     // Get or create user state
-    let userState = userStates.get(userPhone) || { step: 'idle' };
+    const userState = userStates.get(userPhone) || { step: 'idle' };
 
     if (messageText.includes('book') || messageText.includes('appointment') || messageText.includes('schedule')) {
       // Start booking flow
@@ -51,7 +51,7 @@ export class MessageHandlerService {
       // User provided a date
       await this.handleDateSelection(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_slot') {
-      // User selected a slot (should be a button reply)
+      // User provided a time slot as text
       await this.handleSlotSelection(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_details') {
       // User providing patient details
@@ -144,7 +144,7 @@ export class MessageHandlerService {
       userState.step = 'waiting_for_slot';
       userStates.set(userPhone, userState);
 
-      await this.showAvailableSlotsAsButtons(userPhone, dateInput, availability.available);
+      await this.showAvailableSlotsAsText(userPhone, dateInput, availability.available);
 
     } catch (error) {
       console.error('Error handling date selection:', error);
@@ -154,55 +154,27 @@ export class MessageHandlerService {
     }
   }
 
-  // Show available slots as interactive buttons
-  private static async showAvailableSlotsAsButtons(recipientPhone: string, date: string, availableSlots: string[]): Promise<void> {
-    // Create buttons for available slots (max 3 buttons per message)
-    const buttons = availableSlots.slice(0, 3).map(slot => ({
-      type: 'reply',
-      reply: {
-        id: `slot_${slot}`,
-        title: slot
-      }
-    }));
-
-    const message = WhatsAppService.createInteractiveMessage(
+  // Show available slots as text (instead of buttons)
+  private static async showAvailableSlotsAsText(recipientPhone: string, date: string, availableSlots: string[]): Promise<void> {
+    const slotsText = availableSlots.join(', ');
+    
+    const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date}:\n\nPlease select your preferred time:`,
-      buttons
+      `📅 Available slots for ${date}:\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "1:00"):`
     );
 
     await WhatsAppService.sendMessage(message);
-
-    // If there are more slots, send additional buttons
-    if (availableSlots.length > 3) {
-      const remainingSlots = availableSlots.slice(3);
-      const additionalButtons = remainingSlots.map(slot => ({
-        type: 'reply',
-        reply: {
-          id: `slot_${slot}`,
-          title: slot
-        }
-      }));
-
-      const additionalMessage = WhatsAppService.createInteractiveMessage(
-        recipientPhone,
-        'More available slots:',
-        additionalButtons
-      );
-
-      await WhatsAppService.sendMessage(additionalMessage);
-    }
   }
 
-  // Step 3: Handle slot selection
+  // Step 3: Handle slot selection (now handles text input instead of button clicks)
   private static async handleSlotSelection(userPhone: string, slotInput: string, userState: UserBookingState): Promise<void> {
     try {
-      // Extract slot from button reply (format: "slot_10:30")
-      const slot = slotInput.replace('slot_', '');
+      // Clean the input - remove any extra spaces and convert to lowercase for comparison
+      const slot = slotInput.trim();
       
       if (!AVAILABLE_TIME_SLOTS.includes(slot)) {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, '❌ Invalid slot selection. Please try again.')
+          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time slot: "${slot}".\n\nPlease type one of the available slots exactly as shown: ${AVAILABLE_TIME_SLOTS.join(', ')}`)
         );
         return;
       }
@@ -370,7 +342,7 @@ export class MessageHandlerService {
       const currentWeek = [];
       
       // Get next 5 weekdays starting from today
-      let currentDate = new Date(today);
+      const currentDate = new Date(today);
       let daysFound = 0;
       
       while (daysFound < 5) {
