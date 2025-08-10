@@ -60,7 +60,7 @@ export class MessageHandlerService {
     // Get or create user state
     const userState = userStates.get(userPhone) || { step: 'idle' };
 
-    if (messageText.includes('book') || messageText.includes('appointment') || messageText.includes('schedule')) {
+    if (messageText.includes('book')) {
       // Start booking flow
       userState.step = 'waiting_for_date';
       userStates.set(userPhone, userState);
@@ -81,7 +81,7 @@ export class MessageHandlerService {
       }
       userStates.delete(userPhone);
       await WhatsAppService.sendMessage(
-        WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book appointment".')
+        WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book".')
       );
     } else if (userState.step === 'waiting_for_date') {
       // User provided a date
@@ -335,9 +335,9 @@ export class MessageHandlerService {
       if (!result.success) {
         // Check if the failure is due to slot already being taken
         if (result.error?.includes('already exists') || result.error?.includes('duplicate') || result.error?.includes('conflict')) {
-          await WhatsAppService.sendMessage(
-            WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} was just booked by another user.\n\nPlease start over by typing "book appointment" to choose a different time.`)
-          );
+                  await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} was just booked by another user.\n\nPlease start over by typing "book" to choose a different time.`)
+        );
         } else {
           await WhatsAppService.sendMessage(
             WhatsAppService.createTextMessage(userPhone, `❌ Sorry, there was an error creating your appointment: ${result.error}\n\nPlease try again or contact the clinic directly.`)
@@ -377,19 +377,36 @@ export class MessageHandlerService {
   // Send user appointments
   private static async sendUserAppointments(recipientPhone: string): Promise<void> {
     const appointments = await AppointmentService.getAppointments();
-    const userAppointments = appointments.filter(apt => apt.patientPhone === recipientPhone);
+    
+    // Filter by recipient phone number and future dates only
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for date comparison
+    
+    const userAppointments = appointments.filter(apt => {
+      const appointmentDate = new Date(apt.date);
+      appointmentDate.setHours(0, 0, 0, 0);
+      
+      return apt.patientPhone === recipientPhone && appointmentDate >= today;
+    });
 
     if (userAppointments.length === 0) {
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(
           recipientPhone,
-          '📋 You have no appointments scheduled.\n\nReply with "book appointment" to schedule one!'
+          '📋 You have no future appointments scheduled.\n\nReply with "book" to schedule one!'
         )
       );
       return;
     }
 
-    let appointmentText = '📋 Your Appointments:\n\n';
+    // Sort appointments by date and time
+    userAppointments.sort((a, b) => {
+      const dateA = new Date(a.date + ' ' + a.timeSlot);
+      const dateB = new Date(b.date + ' ' + b.timeSlot);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    let appointmentText = '📋 Your Future Appointments:\n\n';
     userAppointments.forEach((apt, index) => {
       appointmentText += `${index + 1}. ${apt.patientName}\n`;
       appointmentText += `   📅 ${apt.date} at ${apt.timeSlot}\n`;
@@ -406,7 +423,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book appointment" - Start step-by-step booking process\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview\n❓ "help" - Show this help message\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
+        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview\n❓ "help" - Show this help message\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
       )
     );
   }
@@ -416,7 +433,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\nPlease reply with:\n\n📅 "book appointment" - to start the step-by-step booking process\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview\n❓ "help" - for assistance'
+        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview\n❓ "help" - for assistance'
       )
     );
   }
@@ -469,7 +486,7 @@ export class MessageHandlerService {
         weeklyText += '\n';
       }
       
-      weeklyText += '💡 Tip: Use "book appointment" to start the booking process.';
+      weeklyText += '💡 Tip: Use "book" to start the booking process.';
       
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(recipientPhone, weeklyText)
