@@ -1,16 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { supabase, initializeDatabase } from '../../src/config/database';
 
-interface Appointment {
-  id: number;
-  date: string;
-  timeSlot: string;
-  patientName: string;
-  department: 'Ortho' | 'ENT';
-  patientPhone: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Appointment interface is defined in types/appointment.ts
 
 interface CreateAppointmentRequest {
   date: string;
@@ -57,7 +48,7 @@ function buildFilter(query: Record<string, string>): any {
   return filter;
 }
 
-export const handler: Handler = async (event, context) => {
+export const handler: Handler = async (event) => {
   // Enable CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',

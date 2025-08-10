@@ -71,7 +71,7 @@ async function ensureDatabaseInitialized(): Promise<void> {
   }
 }
 
-export const handler: Handler = async (event, context) => {
+export const handler: Handler = async (event) => {
   // Handle webhook verification
   if (event.httpMethod === 'GET') {
     const queryParams = new URLSearchParams(event.queryStringParameters as Record<string, string> || '');
