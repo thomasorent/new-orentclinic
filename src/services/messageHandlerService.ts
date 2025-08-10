@@ -4,7 +4,8 @@ import type { CreateAppointmentRequest } from '../types/appointment';
 
 // User booking state tracking
 export interface UserBookingState {
-  step: 'idle' | 'waiting_for_date' | 'waiting_for_slot' | 'waiting_for_details';
+  step: 'idle' | 'waiting_for_department' | 'waiting_for_date' | 'waiting_for_slot' | 'waiting_for_details';
+  selectedDepartment?: 'Ortho' | 'ENT';
   selectedDate?: string;
   selectedSlot?: string;
   tempData?: {
@@ -39,7 +40,7 @@ setInterval(() => {
     if (userState.reservationTime && (now - userState.reservationTime > 30 * 60 * 1000)) {
       // Clear expired reservation
       if (userState.selectedDate && userState.selectedSlot) {
-        const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
+        const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
         temporaryReservations.delete(reservationKey);
       }
       userStates.delete(userPhone);
@@ -48,6 +49,20 @@ setInterval(() => {
 }, 60000); // Check every minute
 
 export class MessageHandlerService {
+  // Normalize phone number for comparison (remove country code, spaces, dashes, etc.)
+  private static normalizePhoneNumber(phone: string): string {
+    // Remove all non-digit characters
+    let normalized = phone.replace(/\D/g, '');
+    
+    // If it starts with country code (e.g., 91 for India), remove it
+    // For now, we'll assume local numbers are 10 digits
+    if (normalized.length > 10) {
+      normalized = normalized.slice(-10); // Take last 10 digits
+    }
+    
+    return normalized;
+  }
+
   // Handle incoming WhatsApp messages
   static async handleIncomingMessage(message: {
     from: string;
@@ -62,9 +77,9 @@ export class MessageHandlerService {
 
     if (messageText.includes('book')) {
       // Start booking flow
-      userState.step = 'waiting_for_date';
+      userState.step = 'waiting_for_department';
       userStates.set(userPhone, userState);
-      await this.askForDate(userPhone);
+      await this.askForDepartment(userPhone);
     } else if (messageText.includes('my appointments') || messageText.includes('check')) {
       await this.sendUserAppointments(userPhone);
     } else if (messageText.includes('help')) {
@@ -76,13 +91,16 @@ export class MessageHandlerService {
       const userState = userStates.get(userPhone);
       if (userState && userState.selectedDate && userState.selectedSlot) {
         // Clear the temporary reservation
-        const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
+        const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
         temporaryReservations.delete(reservationKey);
       }
       userStates.delete(userPhone);
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book".')
       );
+    } else if (userState.step === 'waiting_for_department') {
+      // User provided a department
+      await this.handleDepartmentSelection(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_date') {
       // User provided a date
       await this.handleDateSelection(userPhone, messageText, userState);
@@ -97,11 +115,55 @@ export class MessageHandlerService {
     }
   }
 
-  // Step 1: Ask user for date
-  private static async askForDate(recipientPhone: string): Promise<void> {
+  // Step 1: Ask user for department
+  private static async askForDepartment(recipientPhone: string): Promise<void> {
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      '📅 Let\'s book your appointment!\n\nPlease provide the date you\'d like to book in dd/mm/yyyy format (e.g., 25/12/2024).\n\nNote: Appointments are only available on weekdays (Monday to Friday).\n\nType "cancel" to stop the booking process.'
+      '🏥 Please select your department:\n\n1️⃣ Ortho\n2️⃣ ENT\n\nType "cancel" to stop the booking process.'
+    );
+    await WhatsAppService.sendMessage(message);
+  }
+
+  // Step 2: Handle department selection
+  private static async handleDepartmentSelection(userPhone: string, departmentInput: string, userState: UserBookingState): Promise<void> {
+    try {
+      // Clean the input - remove any extra spaces and convert to lowercase for comparison
+      const department = departmentInput.trim().toLowerCase();
+      
+      if (department === 'ortho') {
+        userState.selectedDepartment = 'Ortho';
+      } else if (department === 'ent') {
+        userState.selectedDepartment = 'ENT';
+      } else {
+        await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, '❌ Invalid department selection. Please choose "Ortho" or "ENT".')
+        );
+        return;
+      }
+
+      // Update user state
+      userState.step = 'waiting_for_date';
+      userStates.set(userPhone, userState);
+
+      // Ask for date
+      await this.askForDate(userPhone);
+
+    } catch (error) {
+      console.error('Error handling department selection:', error);
+      await WhatsAppService.sendMessage(
+        WhatsAppService.createTextMessage(userPhone, '❌ Sorry, there was an error processing your department selection. Please try again or type "cancel" to start over.')
+      );
+    }
+  }
+
+  // Step 1: Ask user for date
+  private static async askForDate(recipientPhone: string): Promise<void> {
+    const userState = userStates.get(recipientPhone);
+    const department = userState?.selectedDepartment || 'your selected department';
+    
+    const message = WhatsAppService.createTextMessage(
+      recipientPhone,
+      `📅 Let's book your appointment for ${department}!\n\nPlease provide the date you'd like to book in dd/mm/yyyy format (e.g., 25/12/2024).\n\nNote: Appointments are only available on weekdays (Monday to Friday).\n\nType "cancel" to stop the booking process.`
     );
     await WhatsAppService.sendMessage(message);
   }
@@ -167,10 +229,10 @@ export class MessageHandlerService {
       console.log(`Test conversion result: ${testConversion}`);
       
       // Get available slots for this date considering both database and temporary reservations
-      const availability = await this.getAvailableSlotsWithReservations(formattedDate);
+      const availability = await this.getAvailableSlotsWithReservations(formattedDate, userState.selectedDepartment!);
       
       // Debug logging
-      console.log(`Date: ${formattedDate}, Available: ${availability.available.join(', ')}, Booked: ${availability.booked.join(', ')}, Reserved: ${availability.reserved.join(', ')}`);
+      console.log(`Date: ${formattedDate}, Department: ${userState.selectedDepartment}, Available: ${availability.available.join(', ')}, Booked: ${availability.booked.join(', ')}, Reserved: ${availability.reserved.join(', ')}`);
       
       // Debug: Check database schema to understand time format
       await AppointmentService.debugDatabaseSchema();
@@ -184,7 +246,7 @@ export class MessageHandlerService {
       
       if (availability.available.length === 0) {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `📅 ${dateInput}\n\n❌ No available slots for this date.\n\nAll time slots are booked. Please choose a different date or type "cancel" to stop.`)
+          WhatsAppService.createTextMessage(userPhone, `📅 ${dateInput} (${userState.selectedDepartment})\n\n❌ No available slots for this date and department.\n\nAll time slots are booked. Please choose a different date or type "cancel" to stop.`)
         );
         return;
       }
@@ -194,7 +256,7 @@ export class MessageHandlerService {
       userState.step = 'waiting_for_slot';
       userStates.set(userPhone, userState);
 
-      await this.showAvailableSlotsAsText(userPhone, dateInput, availability.available);
+      await this.showAvailableSlotsAsText(userPhone, dateInput, availability.available, userState.selectedDepartment!);
 
     } catch (error) {
       console.error('Error handling date selection:', error);
@@ -205,12 +267,12 @@ export class MessageHandlerService {
   }
 
   // Show available slots as text (instead of buttons)
-  private static async showAvailableSlotsAsText(recipientPhone: string, date: string, availableSlots: string[]): Promise<void> {
+  private static async showAvailableSlotsAsText(recipientPhone: string, date: string, availableSlots: string[], department: 'Ortho' | 'ENT'): Promise<void> {
     const slotsText = availableSlots.join(', ');
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date}:\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "1:00"):`
+      `📅 Available slots for ${date} (${department}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "1:00"):`
     );
 
     await WhatsAppService.sendMessage(message);
@@ -230,7 +292,7 @@ export class MessageHandlerService {
       }
 
       // Check if slot is already reserved by another user
-      const reservationKey = `${userState.selectedDate}-${slot}`;
+      const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${slot}`;
       const existingReservation = temporaryReservations.get(reservationKey);
       
       if (existingReservation && existingReservation.userId !== userPhone) {
@@ -250,7 +312,7 @@ export class MessageHandlerService {
       userStates.set(userPhone, userState);
 
       // Ask for patient details
-      await this.askForPatientDetails(userPhone, userState.selectedDate!, slot);
+      await this.askForPatientDetails(userPhone, userState.selectedDate!, slot, userState.selectedDepartment!);
 
     } catch (error) {
       console.error('Error handling slot selection:', error);
@@ -261,10 +323,10 @@ export class MessageHandlerService {
   }
 
   // Ask for patient details
-  private static async askForPatientDetails(recipientPhone: string, date: string, time: string): Promise<void> {
+  private static async askForPatientDetails(recipientPhone: string, date: string, time: string, department: 'Ortho' | 'ENT'): Promise<void> {
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📋 Great! You've selected ${date} at ${time}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Department (Ortho/ENT):\n3️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nDepartment: Ortho\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, Ortho, 1234567890\n\nType "cancel" to start over.`
+      `📋 Great! You've selected ${date} at ${time} for ${department}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, 1234567890\n\nType "cancel" to start over.`
     );
     await WhatsAppService.sendMessage(message);
   }
@@ -275,18 +337,16 @@ export class MessageHandlerService {
       // Parse the message to extract patient details
       // First try comma-separated format, then fall back to line-by-line format
       let patientName = '';
-      let department = '';
       let phone = '';
 
       // Check if it's comma-separated format
       if (messageText.includes(',')) {
         const parts = messageText.split(',').map(part => part.trim());
         
-        if (parts.length >= 3) {
-          // Assume format: name, department, phone
+        if (parts.length >= 2) {
+          // Assume format: name, phone
           patientName = parts[0];
-          department = parts[1];
-          phone = parts[2];
+          phone = parts[1];
         }
       } else {
         // Fall back to line-by-line format
@@ -296,38 +356,24 @@ export class MessageHandlerService {
           const lowerLine = line.toLowerCase();
           if (lowerLine.includes('patient name:') || lowerLine.includes('1️⃣')) {
             patientName = line.split(':')[1]?.trim() || line.replace('1️⃣', '').trim();
-          } else if (lowerLine.includes('department:') || lowerLine.includes('2️⃣')) {
-            department = line.split(':')[1]?.trim() || line.replace('2️⃣', '').trim();
-          } else if (lowerLine.includes('phone') || lowerLine.includes('3️⃣')) {
-            phone = line.split(':')[1]?.trim() || line.replace('3️⃣', '').trim();
+          } else if (lowerLine.includes('phone') || lowerLine.includes('2️⃣')) {
+            phone = line.split(':')[1]?.trim() || line.replace('2️⃣', '').trim();
           }
         }
       }
 
       // Validate required fields
-      if (!patientName || !department || !phone) {
+      if (!patientName || !phone) {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, '❌ Please provide all required information:\n\nPatient Name, Department, and Phone Number.\n\nPlease try again with the complete details.')
+          WhatsAppService.createTextMessage(userPhone, '❌ Please provide all required information:\n\nPatient Name and Phone Number.\n\nPlease try again with the complete details.')
         );
         return;
       }
-
-      // Validate department (case-insensitive)
-      const departmentLower = department.toLowerCase();
-      if (departmentLower !== 'ortho' && departmentLower !== 'ent') {
-        await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, '❌ Invalid department. Please choose either "Ortho" or "ENT".')
-        );
-        return;
-      }
-
-      // Normalize department to proper case format
-      const normalizedDepartment = departmentLower === 'ortho' ? 'Ortho' : 'ENT';
 
       // Create appointment in database (this will fail if slot is already taken)
       const appointment: CreateAppointmentRequest = {
         patientName,
-        department: normalizedDepartment as 'Ortho' | 'ENT',
+        department: userState.selectedDepartment!,
         date: userState.selectedDate!,
         timeSlot: userState.selectedSlot!,
         patientPhone: phone
@@ -339,7 +385,7 @@ export class MessageHandlerService {
         // Check if the failure is due to slot already being taken
         if (result.error?.includes('already exists') || result.error?.includes('duplicate') || result.error?.includes('conflict')) {
                   await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} was just booked by another user.\n\nPlease start over by typing "book" to choose a different time.`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${userState.selectedDate} at ${userState.selectedSlot} for ${userState.selectedDepartment} was just booked by another user.\n\nPlease start over by typing "book" to choose a different time.`)
         );
         } else {
           await WhatsAppService.sendMessage(
@@ -347,22 +393,22 @@ export class MessageHandlerService {
           );
         }
         
-        // Clear the temporary reservation
-        const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
-        temporaryReservations.delete(reservationKey);
-        userStates.delete(userPhone);
+                  // Clear the temporary reservation
+          const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
+          temporaryReservations.delete(reservationKey);
+          userStates.delete(userPhone);
         return;
       }
 
-      // Remove the temporary reservation since booking was successful
-      const reservationKey = `${userState.selectedDate}-${userState.selectedSlot}`;
-      temporaryReservations.delete(reservationKey);
+              // Remove the temporary reservation since booking was successful
+        const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
+        temporaryReservations.delete(reservationKey);
 
       // Send confirmation and clear user state
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(
           userPhone,
-          `✅ Appointment Confirmed!\n\n📋 Details:\n👤 Patient: ${patientName}\n🏥 Department: ${department}\n📅 Date: ${userState.selectedDate}\n⏰ Time: ${userState.selectedSlot}\n📱 Phone: ${phone}\n\nYour appointment has been scheduled. We'll contact you to confirm the details.`
+          `✅ Appointment Confirmed!\n\n📋 Details:\n👤 Patient: ${patientName}\n🏥 Department: ${userState.selectedDepartment}\n📅 Date: ${userState.selectedDate}\n⏰ Time: ${userState.selectedSlot}\n📱 Phone: ${phone}\n\nYour appointment has been scheduled. We'll contact you to confirm the details.`
         )
       );
 
@@ -379,18 +425,41 @@ export class MessageHandlerService {
 
   // Send user appointments
   private static async sendUserAppointments(recipientPhone: string): Promise<void> {
+    console.log(`=== DEBUG: sendUserAppointments for phone: ${recipientPhone} ===`);
+    
     const appointments = await AppointmentService.getAppointments();
+    console.log(`Total appointments in database: ${appointments.length}`);
+    
+    // Log all appointments for debugging
+    appointments.forEach((apt, index) => {
+      console.log(`Appointment ${index + 1}: Date: ${apt.date}, Time: ${apt.timeSlot}, Patient: ${apt.patientName}, Phone: ${apt.patientPhone}, Department: ${apt.department}`);
+    });
     
     // Filter by recipient phone number and future dates only
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for date comparison
+    console.log(`Today's date (reset to start of day): ${today.toISOString()}`);
+    console.log(`Today's date (local): ${today.toLocaleDateString()}`);
     
     const userAppointments = appointments.filter(apt => {
       const appointmentDate = new Date(apt.date);
       appointmentDate.setHours(0, 0, 0, 0);
       
-      return apt.patientPhone === recipientPhone && appointmentDate >= today;
+      // Normalize both phone numbers for comparison
+      const normalizedAppointmentPhone = this.normalizePhoneNumber(apt.patientPhone);
+      const normalizedRecipientPhone = this.normalizePhoneNumber(recipientPhone);
+      
+      const phoneMatch = normalizedAppointmentPhone === normalizedRecipientPhone;
+      const isFuture = appointmentDate >= today;
+      
+      console.log(`Checking appointment: Phone match: ${phoneMatch} (${normalizedAppointmentPhone} vs ${normalizedRecipientPhone}), Future date: ${isFuture} (${appointmentDate.toISOString()} >= ${today.toISOString()})`);
+      console.log(`  Raw appointment date: ${apt.date}, Parsed: ${appointmentDate.toISOString()}`);
+      
+      return phoneMatch && isFuture;
     });
+
+    console.log(`Filtered appointments for user: ${userAppointments.length}`);
+    console.log(`=== End debug ===`);
 
     if (userAppointments.length === 0) {
       await WhatsAppService.sendMessage(
@@ -426,7 +495,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview\n❓ "help" - Show this help message\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
+        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
       )
     );
   }
@@ -436,7 +505,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview\n❓ "help" - for assistance'
+        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
       )
     );
   }
@@ -469,23 +538,42 @@ export class MessageHandlerService {
           day: 'numeric' 
         });
         
-        const availability = await this.getAvailableSlotsWithReservations(date.toISOString().split('T')[0]);
+        const dateFormatted = date.toISOString().split('T')[0];
         
-        if (availability.error) {
-          weeklyText += `${dateStr}: ❌ ${availability.error}\n`;
-        } else if (availability.available.length === 0) {
-          weeklyText += `${dateStr}: ❌ Fully booked\n`;
+        // Check availability for both departments
+        const orthoAvailability = await this.getAvailableSlotsWithReservations(dateFormatted, 'Ortho');
+        const entAvailability = await this.getAvailableSlotsWithReservations(dateFormatted, 'ENT');
+        
+        weeklyText += `${dateStr}:\n`;
+        
+        if (orthoAvailability.error) {
+          weeklyText += `  🦴 Ortho: ❌ ${orthoAvailability.error}\n`;
         } else {
-          const availableCount = availability.available.length;
+          const orthoAvailableCount = orthoAvailability.available.length;
           const totalSlots = AVAILABLE_TIME_SLOTS.length;
-          const reservedCount = availability.reserved.length;
+          const orthoReservedCount = orthoAvailability.reserved.length;
           
-          if (reservedCount > 0) {
-            weeklyText += `${dateStr}: ✅ ${availableCount}/${totalSlots} slots available (${reservedCount} temporarily reserved)\n`;
+          if (orthoReservedCount > 0) {
+            weeklyText += `  🦴 Ortho: ✅ ${orthoAvailableCount}/${totalSlots} slots available (${orthoReservedCount} temporarily reserved)\n`;
           } else {
-            weeklyText += `${dateStr}: ✅ ${availableCount}/${totalSlots} slots available\n`;
+            weeklyText += `  🦴 Ortho: ✅ ${orthoAvailableCount}/${totalSlots} slots available\n`;
           }
         }
+        
+        if (entAvailability.error) {
+          weeklyText += `  👂 ENT: ❌ ${entAvailability.error}\n`;
+        } else {
+          const entAvailableCount = entAvailability.available.length;
+          const totalSlots = AVAILABLE_TIME_SLOTS.length;
+          const entReservedCount = entAvailability.reserved.length;
+          
+          if (entReservedCount > 0) {
+            weeklyText += `  👂 ENT: ✅ ${entAvailableCount}/${totalSlots} slots available (${entReservedCount} temporarily reserved)\n`;
+          } else {
+            weeklyText += `  👂 ENT: ✅ ${entAvailableCount}/${totalSlots} slots available\n`;
+          }
+        }
+        
         weeklyText += '\n';
       }
       
@@ -507,10 +595,10 @@ export class MessageHandlerService {
   }
 
   // Get available slots considering both database appointments and temporary reservations
-  private static async getAvailableSlotsWithReservations(date: string): Promise<{ available: string[], booked: string[], reserved: string[], error?: string }> {
+  private static async getAvailableSlotsWithReservations(date: string, department: 'Ortho' | 'ENT'): Promise<{ available: string[], booked: string[], reserved: string[], error?: string }> {
     try {
       // Get availability from database
-      const availability = await AppointmentService.getAvailableSlotsForDate(date);
+      const availability = await AppointmentService.getAvailableSlotsForDate(date, department);
       
       if (availability.error) {
         return { available: [], booked: [], reserved: [], error: availability.error };
@@ -519,8 +607,8 @@ export class MessageHandlerService {
       // Get slots that are temporarily reserved
       const reservedSlots: string[] = [];
       for (const [key] of temporaryReservations.entries()) {
-        if (key.startsWith(`${date}-`)) {
-          const slot = key.split('-')[1];
+        if (key.startsWith(`${date}-${department}-`)) {
+          const slot = key.split('-')[2];
           reservedSlots.push(slot);
         }
       }

@@ -74,8 +74,8 @@ export class AppointmentService {
     }
   }
 
-  // Check available time slots for a specific date
-  static async getAvailableSlotsForDate(dateStr: string): Promise<{ available: string[], booked: string[], error?: string }> {
+  // Check available time slots for a specific date and department
+  static async getAvailableSlotsForDate(dateStr: string, department: 'Ortho' | 'ENT'): Promise<{ available: string[], booked: string[], error?: string }> {
     try {
       // Validate the date format and check if it's a weekday
       const date = new Date(dateStr);
@@ -95,14 +95,15 @@ export class AppointmentService {
         return { available: [], booked: [], error: 'Cannot check availability for past dates' };
       }
 
-      // Get all appointments for this date
+      // Get all appointments for this date and department
       const { data: appointments, error } = await supabase
         .from('appointments')
         .select('time_slot')
-        .eq('date', dateStr);
+        .eq('date', dateStr)
+        .eq('department', department);
 
       if (error) {
-        console.error('Error fetching appointments for date:', error);
+        console.error('Error fetching appointments for date and department:', error);
         return { available: [], booked: [], error: 'Database error while checking availability' };
       }
 
@@ -116,13 +117,13 @@ export class AppointmentService {
       });
       
       // Debug logging
-      console.log(`getAvailableSlotsForDate for ${dateStr}:`);
+      console.log(`getAvailableSlotsForDate for ${dateStr} (${department}):`);
       console.log(`  Raw appointments from DB:`, appointments);
       console.log(`  Raw booked slots: ${bookedSlots.join(', ')}`);
       console.log(`  Normalized booked slots: ${normalizedBookedSlots.join(', ')}`);
       console.log(`  All available slots: ${AVAILABLE_TIME_SLOTS.join(', ')}`);
       console.log(`  Input date: ${dateStr}, Type: ${typeof dateStr}`);
-      console.log(`  SQL Query: SELECT time_slot FROM appointments WHERE date = '${dateStr}'`);
+      console.log(`  SQL Query: SELECT time_slot FROM appointments WHERE date = '${dateStr}' AND department = '${department}'`);
       
       // Find available slots (all slots minus booked ones)
       const availableSlots = AVAILABLE_TIME_SLOTS.filter(slot => !normalizedBookedSlots.includes(slot));
@@ -135,7 +136,7 @@ export class AppointmentService {
       };
 
     } catch (error) {
-      console.error('Error checking available slots for date:', error);
+      console.error('Error checking available slots for date and department:', error);
       return { available: [], booked: [], error: 'Error processing date' };
     }
   }
@@ -144,7 +145,7 @@ export class AppointmentService {
   static async createAppointment(appointment: CreateAppointmentRequest): Promise<{ success: boolean; error?: string }> {
     try {
       // First, check if the slot is still available (double-check to prevent race conditions)
-      const availability = await this.getAvailableSlotsForDate(appointment.date);
+      const availability = await this.getAvailableSlotsForDate(appointment.date, appointment.department);
       if (!availability.available.includes(appointment.timeSlot)) {
         return { 
           success: false, 
