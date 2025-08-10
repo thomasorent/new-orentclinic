@@ -199,7 +199,7 @@ export class MessageHandlerService {
   private static async askForPatientDetails(recipientPhone: string, date: string, time: string): Promise<void> {
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📋 Great! You've selected ${date} at ${time}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Department (Ortho/ENT):\n3️⃣ Phone Number:\n\nReply with all details in one message.\n\nType "cancel" to start over.`
+      `📋 Great! You've selected ${date} at ${time}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Department (Ortho/ENT):\n3️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nDepartment: Ortho\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, Ortho, 1234567890\n\nType "cancel" to start over.`
     );
     await WhatsAppService.sendMessage(message);
   }
@@ -208,19 +208,34 @@ export class MessageHandlerService {
   private static async handlePatientDetails(userPhone: string, messageText: string, userState: UserBookingState): Promise<void> {
     try {
       // Parse the message to extract patient details
-      const lines = messageText.split('\n');
+      // First try comma-separated format, then fall back to line-by-line format
       let patientName = '';
       let department = '';
       let phone = '';
 
-      for (const line of lines) {
-        const lowerLine = line.toLowerCase();
-        if (lowerLine.includes('patient name:') || lowerLine.includes('1️⃣')) {
-          patientName = line.split(':')[1]?.trim() || line.replace('1️⃣', '').trim();
-        } else if (lowerLine.includes('department:') || lowerLine.includes('2️⃣')) {
-          department = line.split(':')[1]?.trim() || line.replace('2️⃣', '').trim();
-        } else if (lowerLine.includes('phone') || lowerLine.includes('3️⃣')) {
-          phone = line.split(':')[1]?.trim() || line.replace('3️⃣', '').trim();
+      // Check if it's comma-separated format
+      if (messageText.includes(',')) {
+        const parts = messageText.split(',').map(part => part.trim());
+        
+        if (parts.length >= 3) {
+          // Assume format: name, department, phone
+          patientName = parts[0];
+          department = parts[1];
+          phone = parts[2];
+        }
+      } else {
+        // Fall back to line-by-line format
+        const lines = messageText.split('\n');
+        
+        for (const line of lines) {
+          const lowerLine = line.toLowerCase();
+          if (lowerLine.includes('patient name:') || lowerLine.includes('1️⃣')) {
+            patientName = line.split(':')[1]?.trim() || line.replace('1️⃣', '').trim();
+          } else if (lowerLine.includes('department:') || lowerLine.includes('2️⃣')) {
+            department = line.split(':')[1]?.trim() || line.replace('2️⃣', '').trim();
+          } else if (lowerLine.includes('phone') || lowerLine.includes('3️⃣')) {
+            phone = line.split(':')[1]?.trim() || line.replace('3️⃣', '').trim();
+          }
         }
       }
 
