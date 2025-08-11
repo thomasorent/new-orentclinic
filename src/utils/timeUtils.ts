@@ -9,11 +9,12 @@
  * @returns Time in 24-hour format (e.g., "10:30", "13:30") or null if invalid
  * 
  * Examples:
- * - "10:30" → "22:30" (assumes PM)
+ * - "10:30" → "10:30" (assumes AM for clinic hours)
  * - "10:30 AM" → "10:30"
  * - "10:30am" → "10:30"
  * - "1:30 PM" → "13:30"
  * - "1:30pm" → "13:30"
+ * - "1:30" → "13:30" (assumes PM for afternoon hours)
  * - "13:30" → "13:30" (24-hour format)
  * - "12:00" → "12:00" (assumes PM)
  * - "12:00 AM" → "00:00"
@@ -53,7 +54,7 @@ export const parseFlexibleTimeInput = (timeInput: string): string | null => {
       return null;
     }
     
-    // Handle 12-hour format without AM/PM (assume PM for hours 1-11, AM for 12)
+    // Handle 12-hour format without AM/PM (smart parsing for clinic hours)
     const timeMatch = cleanInput.match(/^(\d{1,2}):(\d{2})$/);
     if (timeMatch) {
       let [_, hours, minutes] = timeMatch;
@@ -62,16 +63,24 @@ export const parseFlexibleTimeInput = (timeInput: string): string | null => {
       
       if (minuteNum < 0 || minuteNum > 59) return null;
       
-      // If hour is 12, assume PM; if 1-11, assume PM (clinic hours are typically afternoon)
-      if (hourNum === 12) {
-        hourNum = 12; // 12 PM = 12:00
-      } else if (hourNum >= 1 && hourNum <= 11) {
-        hourNum = hourNum + 12; // 1-11 PM = 13:00-23:00
+      // Smart parsing for clinic hours (10 AM - 2 PM)
+      // If hour is 10 or 11, assume AM (morning clinic hours)
+      // If hour is 1 or 2, assume PM (afternoon clinic hours)
+      // If hour is 12, assume PM (noon)
+      if (hourNum === 10 || hourNum === 11) {
+        // Morning hours: 10:00-11:59 AM
+        return `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
+      } else if (hourNum === 1 || hourNum === 2) {
+        // Afternoon hours: 1:00-2:59 PM
+        hourNum = hourNum + 12; // Convert to 24-hour: 1 PM = 13:00, 2 PM = 14:00
+        return `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
+      } else if (hourNum === 12) {
+        // Noon: 12:00 PM
+        return `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
       } else {
-        return null; // Invalid hour
+        // Invalid hour for clinic hours
+        return null;
       }
-      
-      return `${hourNum.toString().padStart(2, '0')}:${minuteNum.toString().padStart(2, '0')}`;
     }
     
     return null;

@@ -333,7 +333,7 @@ export class MessageHandlerService {
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot in any format:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\n⚠️ Note: Slots are checked for availability when you select them.`
+      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot in any format:\n• 10:30 (assumes AM)\n• 1:30 (assumes PM)\n• 10:30 AM or 1:30 PM\n• 13:30 (24-hour format)\n\n⚠️ Note: Slots are checked for availability when you select them.`
     );
 
     await WhatsAppService.sendMessage(message);
@@ -354,7 +354,7 @@ export class MessageHandlerService {
         const slotsText = formattedSlots.join(', ');
         
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time format: "${slotInput}".\n\nPlease type a time in any of these formats:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\nAvailable slots: ${slotsText}`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time format: "${slotInput}".\n\nPlease type a time in any of these formats:\n• 10:30 (assumes AM)\n• 1:30 (assumes PM)\n• 10:30 AM or 1:30 PM\n• 13:30 (24-hour format)\n\nAvailable slots: ${slotsText}`)
         );
         return;
       }
@@ -614,7 +614,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n⏰ Time Input Formats:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
+        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n⏰ Time Input Formats:\n• 10:30 (assumes AM)\n• 1:30 (assumes PM)\n• 10:30 AM or 1:30 PM\n• 13:30 (24-hour format)\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
       )
     );
   }
@@ -624,7 +624,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\n⏰ Time Input Formats:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
+        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\n⏰ Time Input Formats:\n• 10:30 (assumes AM)\n• 1:30 (assumes PM)\n• 10:30 AM or 1:30 PM\n• 13:30 (24-hour format)\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
       )
     );
   }
