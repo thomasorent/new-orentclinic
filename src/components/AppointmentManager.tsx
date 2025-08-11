@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppointmentService } from '../services/appointmentService';
+import { AppointmentService, AVAILABLE_TIME_SLOTS } from '../services/appointmentService';
 import type { Appointment, CreateAppointmentRequest } from '../types/appointment';
+import { formatDateTimeForDisplay, formatTimeTo12Hour } from '../utils/timeUtils';
 import './AppointmentManager.css';
 
 const AppointmentManager: React.FC = () => {
@@ -89,18 +90,7 @@ const AppointmentManager: React.FC = () => {
   };
 
   const formatDateTime = (date: string, timeSlot: string) => {
-    const dateObj = new Date(date);
-    const timeObj = new Date(`2000-01-01T${timeSlot}`);
-    
-    return `${dateObj.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })} at ${timeObj.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
+    return formatDateTimeForDisplay(date, timeSlot);
   };
 
   const clearFilters = () => {
@@ -207,12 +197,18 @@ const AppointmentManager: React.FC = () => {
 
               <div className="form-group">
                 <label>Time *</label>
-                <input
-                  type="time"
+                <select
                   value={formData.timeSlot}
                   onChange={(e) => setFormData({ ...formData, timeSlot: e.target.value })}
                   required
-                />
+                >
+                  <option value="">Select a time slot</option>
+                  {AVAILABLE_TIME_SLOTS.map((slot: string) => (
+                    <option key={slot} value={slot}>
+                      {formatTimeTo12Hour(slot)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

@@ -1,5 +1,6 @@
 import { WhatsAppService } from './whatsappService';
 import { AppointmentService, AVAILABLE_TIME_SLOTS } from './appointmentService';
+import { formatTimeSlotsTo12Hour, formatTimeTo12Hour } from '../utils/timeUtils';
 import type { CreateAppointmentRequest } from '../types/appointment';
 
 // User booking state tracking
@@ -325,7 +326,9 @@ export class MessageHandlerService {
 
   // Show available slots as text (instead of buttons)
   private static async showAvailableSlotsAsText(recipientPhone: string, date: string, availableSlots: string[], department: 'Ortho' | 'ENT'): Promise<void> {
-    const slotsText = availableSlots.join(', ');
+    // Convert time slots to 12-hour format for display
+    const formattedSlots = formatTimeSlotsTo12Hour(availableSlots);
+    const slotsText = formattedSlots.join(', ');
     const displayDepartment = this.getDisplayDepartmentName(department);
     
     const message = WhatsAppService.createTextMessage(
@@ -346,8 +349,12 @@ export class MessageHandlerService {
       const slot = slotInput.trim();
       
       if (!AVAILABLE_TIME_SLOTS.includes(slot)) {
+        // Convert time slots to 12-hour format for display
+        const formattedSlots = formatTimeSlotsTo12Hour(AVAILABLE_TIME_SLOTS);
+        const slotsText = formattedSlots.join(', ');
+        
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time slot: "${slot}".\n\nPlease type one of the available slots exactly as shown: ${AVAILABLE_TIME_SLOTS.join(', ')}`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time slot: "${slot}".\n\nPlease type one of the available slots exactly as shown: ${slotsText}`)
         );
         return;
       }
@@ -408,9 +415,11 @@ export class MessageHandlerService {
   // Ask for patient details
   private static async askForPatientDetails(recipientPhone: string, date: string, time: string, department: 'Ortho' | 'ENT'): Promise<void> {
     const displayDepartment = this.getDisplayDepartmentName(department);
+    // Convert time to 12-hour format for display
+    const formattedTime = formatTimeTo12Hour(time);
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📋 Great! You've selected ${date} at ${time} for ${displayDepartment}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, 1234567890\n\nType "cancel" to start over.`
+      `📋 Great! You've selected ${date} at ${formattedTime} for ${displayDepartment}.\n\nNow please provide:\n\n1️⃣ Patient Name:\n2️⃣ Phone Number:\n\nYou can reply in two formats:\n\n📝 Line by line:\nPatient Name: John Doe\nPhone: 1234567890\n\nOR\n\n📝 Comma separated:\nJohn Doe, 1234567890\n\nType "cancel" to start over.`
     );
     await WhatsAppService.sendMessage(message);
   }
