@@ -1,5 +1,6 @@
 import { supabase } from '../config/database';
 import type { Appointment, CreateAppointmentRequest } from '../types/appointment';
+import { parseFlexibleTimeInput } from '../utils/timeUtils';
 
 // Available time slots (weekdays only)
 export const AVAILABLE_TIME_SLOTS = [
@@ -63,8 +64,13 @@ export class AppointmentService {
         return { isValid: false, error: 'Cannot book appointments in the past' };
       }
       
-      // Check if time is in available slots
-      if (!AVAILABLE_TIME_SLOTS.includes(timeStr)) {
+      // Parse flexible time input and check if it's in available slots
+      const parsedTime = parseFlexibleTimeInput(timeStr);
+      if (!parsedTime) {
+        return { isValid: false, error: `Invalid time format. Please use formats like: 10:30, 10:30 AM, 1:30 PM, or 13:30` };
+      }
+      
+      if (!AVAILABLE_TIME_SLOTS.includes(parsedTime)) {
         return { isValid: false, error: `Invalid time slot. Available slots are: ${AVAILABLE_TIME_SLOTS.join(', ')}` };
       }
       

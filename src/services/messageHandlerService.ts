@@ -1,6 +1,6 @@
 import { WhatsAppService } from './whatsappService';
 import { AppointmentService, AVAILABLE_TIME_SLOTS } from './appointmentService';
-import { formatTimeSlotsTo12Hour, formatTimeTo12Hour } from '../utils/timeUtils';
+import { formatTimeSlotsTo12Hour, formatTimeTo12Hour, parseFlexibleTimeInput } from '../utils/timeUtils';
 import type { CreateAppointmentRequest } from '../types/appointment';
 
 // User booking state tracking
@@ -333,7 +333,7 @@ export class MessageHandlerService {
     
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot (e.g., "10:30" or "13:00"):\n\n⚠️ Note: Slots are checked for availability when you select them.`
+      `📅 Available slots for ${date} (${displayDepartment}):\n\n⏰ ${slotsText}\n\nPlease type your preferred time slot in any format:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\n⚠️ Note: Slots are checked for availability when you select them.`
     );
 
     await WhatsAppService.sendMessage(message);
@@ -345,16 +345,28 @@ export class MessageHandlerService {
       console.log(`Handling slot selection for ${userPhone}: "${slotInput}"`);
       console.log(`User state at start of slot selection:`, userState);
       
-      // Clean the input - remove any extra spaces and convert to lowercase for comparison
-      const slot = slotInput.trim();
+      // Parse flexible time input (accepts both 12-hour and 24-hour formats)
+      const parsedSlot = parseFlexibleTimeInput(slotInput);
       
-      if (!AVAILABLE_TIME_SLOTS.includes(slot)) {
+      if (!parsedSlot) {
         // Convert time slots to 12-hour format for display
         const formattedSlots = formatTimeSlotsTo12Hour(AVAILABLE_TIME_SLOTS);
         const slotsText = formattedSlots.join(', ');
         
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time slot: "${slot}".\n\nPlease type one of the available slots exactly as shown: ${slotsText}`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Invalid time format: "${slotInput}".\n\nPlease type a time in any of these formats:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\nAvailable slots: ${slotsText}`)
+        );
+        return;
+      }
+      
+      // Check if the parsed slot is in our available slots
+      if (!AVAILABLE_TIME_SLOTS.includes(parsedSlot)) {
+        // Convert time slots to 12-hour format for display
+        const formattedSlots = formatTimeSlotsTo12Hour(AVAILABLE_TIME_SLOTS);
+        const slotsText = formattedSlots.join(', ');
+        
+        await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, `❌ Time "${slotInput}" (${parsedSlot}) is not available.\n\nPlease choose from these available slots: ${slotsText}`)
         );
         return;
       }
@@ -370,20 +382,20 @@ export class MessageHandlerService {
       }
 
       // Check if the slot is still available in the database
-      if (!currentAvailability.available.includes(slot)) {
+      if (!currentAvailability.available.includes(parsedSlot)) {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${slot} is no longer available. It may have been booked by another user.\n\nPlease choose a different time slot from the available options.`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${parsedSlot} is no longer available. It may have been booked by another user.\n\nPlease choose a different time slot from the available options.`)
         );
         return;
       }
 
       // Check if slot is already reserved by another user
-      const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${slot}`;
+      const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${parsedSlot}`;
       const existingReservation = temporaryReservations.get(reservationKey);
       
       if (existingReservation && existingReservation.userId !== userPhone) {
         await WhatsAppService.sendMessage(
-          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${slot} was just reserved by another user. Please choose a different time slot.`)
+          WhatsAppService.createTextMessage(userPhone, `❌ Sorry, the slot ${parsedSlot} was just reserved by another user. Please choose a different time slot.`)
         );
         return;
       }
@@ -392,7 +404,7 @@ export class MessageHandlerService {
       temporaryReservations.set(reservationKey, { userId: userPhone, timestamp: Date.now() });
       
       // Update user state
-      userState.selectedSlot = slot;
+      userState.selectedSlot = parsedSlot;
       userState.step = 'waiting_for_details';
       userState.reservationTime = Date.now();
       userState.lastActivityTime = Date.now();
@@ -402,7 +414,7 @@ export class MessageHandlerService {
       console.log(`Stored user state:`, userStates.get(userPhone));
 
       // Ask for patient details
-      await this.askForPatientDetails(userPhone, userState.selectedDate!, slot, userState.selectedDepartment!);
+      await this.askForPatientDetails(userPhone, userState.selectedDate!, parsedSlot, userState.selectedDepartment!);
 
     } catch (error) {
       console.error('Error handling slot selection:', error);
@@ -602,7 +614,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
+        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n⏰ Time Input Formats:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
       )
     );
   }
@@ -612,7 +624,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
+        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\n⏰ Time Input Formats:\n• 10:30 or 10:30 AM\n• 1:30 or 1:30 PM\n• 13:30 (24-hour format)\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
       )
     );
   }
