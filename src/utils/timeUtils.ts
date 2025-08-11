@@ -24,15 +24,6 @@ export const parseFlexibleTimeInput = (timeInput: string): string | null => {
   try {
     const cleanInput = timeInput.trim().toLowerCase();
     
-    // Handle 24-hour format (e.g., "13:30", "10:30")
-    if (/^\d{1,2}:\d{2}$/.test(cleanInput)) {
-      const [hours, minutes] = cleanInput.split(':').map(Number);
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      }
-      return null;
-    }
-    
     // Handle 12-hour format with AM/PM (e.g., "10:30 am", "1:30 pm", "10:30am", "1:30pm")
     const amPmMatch = cleanInput.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/);
     if (amPmMatch) {
@@ -55,7 +46,8 @@ export const parseFlexibleTimeInput = (timeInput: string): string | null => {
     }
     
     // Handle 12-hour format without AM/PM (smart parsing for clinic hours)
-    const timeMatch = cleanInput.match(/^(\d{1,2}):(\d{2})$/);
+    // Only match times that are likely to be 12-hour format (hours 1-12)
+    const timeMatch = cleanInput.match(/^(1[0-2]|[1-9]):(\d{2})$/);
     if (timeMatch) {
       let [_, hours, minutes] = timeMatch;
       let hourNum = parseInt(hours);
@@ -81,6 +73,29 @@ export const parseFlexibleTimeInput = (timeInput: string): string | null => {
         // Invalid hour for clinic hours
         return null;
       }
+    }
+    
+    // Handle 24-hour format (e.g., "13:30", "09:30") - but reject ambiguous times
+    if (/^\d{1,2}:\d{2}$/.test(cleanInput)) {
+      const [hours, minutes] = cleanInput.split(':').map(Number);
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        // Accept clearly 24-hour format times
+        // Reject ambiguous times that could be interpreted as 12-hour format
+        if (hours >= 13) {
+          // Hours 13-23 (1 PM - 11 PM) are clearly 24-hour
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        } else if (hours <= 9) {
+          // Hours 0-9 (12 AM - 9 AM) are clearly 24-hour
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        } else if (hours === 10 || hours === 11 || hours === 12) {
+          // Hours 10, 11, 12 are ambiguous - could be 10 AM, 11 AM, 12 PM
+          // or could be 10:00, 11:00, 12:00 in 24-hour format
+          // Since these are valid clinic hours, we'll reject them to avoid confusion
+          // User should use "10:30 AM" or "10:30" (which will be parsed as 10:30 AM)
+          return null;
+        }
+      }
+      return null;
     }
     
     return null;
