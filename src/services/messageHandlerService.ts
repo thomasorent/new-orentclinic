@@ -67,6 +67,34 @@ export class MessageHandlerService {
     return department === 'Ortho' ? 'Orthopedics' : department;
   }
 
+  // Helper function to calculate the maximum advance booking date (excluding weekends)
+  private static calculateMaxAdvanceDate(weekdaysAhead: number): Date {
+    const today = new Date();
+    let currentDate = new Date(today);
+    let weekdaysCount = 0;
+    
+    // Start from tomorrow
+    currentDate.setDate(currentDate.getDate() + 1);
+    
+    while (weekdaysCount < weekdaysAhead) {
+      const dayOfWeek = currentDate.getDay();
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        weekdaysCount++;
+      }
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Go back one day since we went one day too far
+    currentDate.setDate(currentDate.getDate() - 1);
+    
+    // Reset time to start of day for consistent comparison
+    currentDate.setHours(0, 0, 0, 0);
+    
+    return currentDate;
+  }
+
   // Normalize phone number for comparison (remove country code, spaces, dashes, etc.)
   private static normalizePhoneNumber(phone: string): string {
     // Remove all non-digit characters
@@ -260,9 +288,17 @@ export class MessageHandlerService {
     const userState = userStates.get(recipientPhone);
     const department = userState?.selectedDepartment ? this.getDisplayDepartmentName(userState.selectedDepartment) : 'your selected department';
     
+    // Calculate and format the maximum advance booking date
+    const maxAdvanceDate = this.calculateMaxAdvanceDate(7);
+    const maxDateFormatted = maxAdvanceDate.toLocaleDateString('en-IN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    
     const message = WhatsAppService.createTextMessage(
       recipientPhone,
-      `📅 Let's book your appointment for ${department}!\n\nPlease provide the date you'd like to book in dd/mm/yyyy format (e.g., 25/12/2024).\n\nNote: Appointments are only available on weekdays (Monday to Friday).\n\nType "cancel" to stop the booking process.`
+      `📅 Let's book your appointment for ${department}!\n\nPlease provide the date you'd like to book in dd/mm/yyyy format (e.g., 25/12/2024).\n\n📋 *Booking Rules:*\n• Weekdays only (Monday to Friday)\n• Maximum 7 weekdays in advance\n• Latest available date: ${maxDateFormatted}\n\nType "cancel" to stop the booking process.`
     );
     await WhatsAppService.sendMessage(message);
   }
@@ -316,6 +352,20 @@ export class MessageHandlerService {
       if (date < now) {
         await WhatsAppService.sendMessage(
           WhatsAppService.createTextMessage(userPhone, '❌ Cannot book appointments in the past. Please choose a future date.')
+        );
+        return;
+      }
+
+      // Check if date is more than 7 weekdays in advance
+      const maxAdvanceDate = this.calculateMaxAdvanceDate(7);
+      if (date > maxAdvanceDate) {
+        const maxDateFormatted = maxAdvanceDate.toLocaleDateString('en-IN', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric' 
+        });
+        await WhatsAppService.sendMessage(
+          WhatsAppService.createTextMessage(userPhone, `❌ Cannot book appointments more than 7 weekdays in advance. The latest available date is ${maxDateFormatted}. Please choose an earlier date.`)
         );
         return;
       }
