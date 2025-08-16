@@ -5,7 +5,7 @@ import type { CreateAppointmentRequest } from '../types/appointment';
 
 // User booking state tracking
 export interface UserBookingState {
-  step: 'idle' | 'waiting_for_department' | 'waiting_for_date' | 'waiting_for_slot' | 'waiting_for_details';
+  step: 'idle' | 'waiting_for_booking_confirmation' | 'waiting_for_department' | 'waiting_for_date' | 'waiting_for_slot' | 'waiting_for_details';
   selectedDepartment?: 'Ortho' | 'ENT';
   selectedDate?: string;
   selectedSlot?: string;
@@ -111,11 +111,11 @@ export class MessageHandlerService {
     if (messageText.includes('book')) {
       // Start booking flow
       console.log(`Starting booking flow for ${userPhone}`);
-      userState.step = 'waiting_for_department';
+      userState.step = 'waiting_for_booking_confirmation';
       userState.lastActivityTime = Date.now();
       userStates.set(userPhone, userState);
-      console.log(`Set user state to waiting_for_department:`, userStates.get(userPhone));
-      await this.askForDepartment(userPhone);
+      console.log(`Set user state to waiting_for_booking_confirmation:`, userStates.get(userPhone));
+      await this.sendBookingInfo(userPhone);
     } else if (messageText.includes('my appointments') || messageText.includes('check')) {
       await this.sendUserAppointments(userPhone);
     } else if (messageText.includes('help')) {
@@ -135,6 +135,10 @@ export class MessageHandlerService {
       await WhatsAppService.sendMessage(
         WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book".')
       );
+    } else if (userState.step === 'waiting_for_booking_confirmation') {
+      // User confirming they want to continue with booking
+      console.log(`Handling booking confirmation for step: ${userState.step}`);
+      await this.handleBookingConfirmation(userPhone, messageText, userState);
     } else if (userState.step === 'waiting_for_department') {
       // User provided a department
       console.log(`Handling department selection for step: ${userState.step}`);
@@ -154,6 +158,51 @@ export class MessageHandlerService {
     } else {
       console.log(`No matching step found, sending welcome message. Step was: ${userState.step}`);
       await this.sendWelcomeMessage(userPhone);
+    }
+  }
+
+  // Step 0: Send booking information and ask for confirmation
+  private static async sendBookingInfo(recipientPhone: string): Promise<void> {
+    const message = WhatsAppService.createTextMessage(
+      recipientPhone,
+      '📋 *Booking Information & Rules*\n\n' +
+      'Before we proceed with your appointment booking, please note the following:\n\n' +
+      '💰 *Slot Booking Fee:* ₹50 for every appointment (new or review)\n\n' +
+      '⏰ *Today\'s Booking:* Only open until 9:00 AM. After that, please call reception for availability.\n\n' +
+      '📅 *Future Bookings:* Allowed up to 7 days in advance\n\n' +
+      '✅ *Confirmation:* Slot is confirmed only after payment (no provisional holding)\n\n' +
+      'Do you want to continue with the booking process?\n\n' +
+      'Reply with:\n' +
+      '• "yes" or "continue" - to proceed\n' +
+      '• "cancel" - to stop the booking process'
+    );
+    await WhatsAppService.sendMessage(message);
+  }
+
+  // Handle booking confirmation
+  private static async handleBookingConfirmation(userPhone: string, messageText: string, userState: UserBookingState): Promise<void> {
+    const response = messageText.toLowerCase().trim();
+    
+    if (response === 'yes' || response === 'continue' || response === 'ok' || response === 'proceed') {
+      // User confirmed, proceed to department selection
+      userState.step = 'waiting_for_department';
+      userState.lastActivityTime = Date.now();
+      userStates.set(userPhone, userState);
+      
+      console.log(`User confirmed booking, proceeding to department selection for ${userPhone}`);
+      await this.askForDepartment(userPhone);
+    } else if (response === 'cancel' || response === 'no' || response === 'stop') {
+      // User cancelled
+      console.log(`User cancelled booking for ${userPhone}`);
+      userStates.delete(userPhone);
+      await WhatsAppService.sendMessage(
+        WhatsAppService.createTextMessage(userPhone, '❌ Booking cancelled. You can start over by typing "book" anytime.')
+      );
+    } else {
+      // Invalid response
+      await WhatsAppService.sendMessage(
+        WhatsAppService.createTextMessage(userPhone, '❓ Please reply with "yes" to continue or "cancel" to stop the booking process.')
+      );
     }
   }
 
@@ -614,7 +663,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n⏰ Time Input Formats:\n• 10:30 (assumes AM)\n• 1:30 (assumes PM)\n• 10:30 AM or 1:30 PM\n• 13:30 (24-hour format)\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
+        '❓ How can we help?\n\nAvailable commands:\n\n📅 "book" - Start step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - View your appointments\n📊 "weekly" - Show weekly availability overview for both departments\n❓ "help" - Show this help message\n\n📝 Note: Appointments are only available on weekdays (Monday to Friday) during clinic hours.\n\nFor urgent matters, please call our clinic directly.'
       )
     );
   }
@@ -624,7 +673,7 @@ export class MessageHandlerService {
     await WhatsAppService.sendMessage(
       WhatsAppService.createTextMessage(
         recipientPhone,
-        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\n⏰ Time Input Formats:\n• 10:30 (assumes AM)\n• 1:30 (assumes PM)\n• 10:30 AM or 1:30 PM\n• 13:30 (24-hour format)\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
+        'Welcome to Orent Clinic! 🏥\n\nWe\'re here to help you with your healthcare needs.\n\n📅 Appointments are available on weekdays (Monday to Friday) only.\n\nPlease reply with:\n\n📅 "book" - to start the step-by-step booking process (Department → Date → Time → Details)\n📋 "my appointments" - to check your existing appointments\n📊 "weekly" - to see weekly availability overview for both departments\n❓ "help" - for assistance'
       )
     );
   }
