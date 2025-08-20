@@ -96,6 +96,83 @@ export class MessageGeneratorService {
     await WhatsAppService.sendMessage(message);
   }
 
+  // Send payment step message
+  static async sendPaymentStepMessage(recipientPhone: string, date: string, time: string, department: 'Ortho' | 'ENT', patientName: string): Promise<void> {
+    const displayDepartment = this.getDisplayDepartmentName(department);
+    const formattedTime = this.formatTimeTo12Hour(time);
+    
+    const message = WhatsAppService.createTextMessage(
+      recipientPhone,
+      `💳 **Payment Step**\n\nWe are now proceeding to payment for your appointment.\n\n📋 **Appointment Details:**\n👤 Patient: ${patientName}\n🏥 Department: ${displayDepartment}\n📅 Date: ${date}\n⏰ Time: ${formattedTime}\n💰 Fee: ₹50 (Slot Booking Fee)\n\nPlease confirm that you want to proceed with payment by typing:\n\n✅ "pay" or "confirm" - to proceed with payment\n❌ "cancel" - to cancel the booking`
+    );
+    await WhatsAppService.sendMessage(message);
+  }
+
+  // Send payment button message
+  static async sendPaymentButtonMessage(recipientPhone: string, date: string, time: string, department: 'Ortho' | 'ENT', _patientName: string): Promise<void> {
+    const formattedTime = this.formatTimeTo12Hour(time);
+    const doctor = this.getDoctorName(department);
+    
+    const message = WhatsAppService.createTextMessage(
+      recipientPhone,
+      `⏰ **Slot Reserved for 15 Minutes**\n\nYour appointment with ${doctor} on ${date} at ${formattedTime} is reserved for 15 minutes.\n\nTap "Pay now" to confirm your booking.`
+    );
+    await WhatsAppService.sendMessage(message);
+    
+    // Send interactive button with Razorpay link
+    await this.sendPaymentButton(recipientPhone);
+  }
+
+  // Send payment button
+  private static async sendPaymentButton(recipientPhone: string): Promise<void> {
+    // Create Razorpay payment link
+    const razorpayLink = await this.createRazorpayPaymentLink(recipientPhone);
+    
+    // Send interactive button message
+    const buttonMessage = WhatsAppService.createInteractiveMessage(
+      recipientPhone,
+      '💳 Complete Your Payment\n\nClick the button below to proceed with payment:',
+      [
+        {
+          type: 'url',
+          text: 'Pay Now',
+          url: razorpayLink
+        }
+      ]
+    );
+    
+    await WhatsAppService.sendMessage(buttonMessage);
+  }
+
+  // Send payment timeout message
+  static async sendPaymentTimeoutMessage(recipientPhone: string): Promise<void> {
+    const message = WhatsAppService.createTextMessage(
+      recipientPhone,
+      `⏰ **Booking Cancelled**\n\nYour 15-minute payment window has expired and the slot has been released.\n\nTo book a new appointment, please type "book" to start over.`
+    );
+    await WhatsAppService.sendMessage(message);
+  }
+
+  // Create Razorpay payment link
+  private static async createRazorpayPaymentLink(recipientPhone: string): Promise<string> {
+    // This would typically call your backend to create a Razorpay order
+    // For now, returning a placeholder link
+    const baseUrl = 'https://api.razorpay.com/v1/checkout/embedded';
+    const orderId = `order_${Date.now()}_${recipientPhone}`;
+    
+    // In production, you would:
+    // 1. Call your backend to create a Razorpay order
+    // 2. Get the actual payment link from Razorpay
+    // 3. Return the real payment URL
+    
+    return `${baseUrl}?order_id=${orderId}&amount=5000&currency=INR&prefill[contact]=${recipientPhone}`;
+  }
+
+  // Get doctor name for display
+  private static getDoctorName(department: 'Ortho' | 'ENT'): string {
+    return department === 'Ortho' ? 'Dr. K. M. Thomas' : 'Dr. Susan Thomas';
+  }
+
   // Send weekly availability
   static async sendWeeklyAvailability(recipientPhone: string, availabilityData: any): Promise<void> {
     await WhatsAppService.sendMessage(

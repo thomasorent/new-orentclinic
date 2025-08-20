@@ -2,7 +2,7 @@
 // Handles user booking states, temporary reservations, and cleanup
 
 export interface UserBookingState {
-  step: 'idle' | 'waiting_for_booking_confirmation' | 'waiting_for_department' | 'waiting_for_date' | 'waiting_for_slot' | 'waiting_for_details';
+  step: 'idle' | 'waiting_for_booking_confirmation' | 'waiting_for_department' | 'waiting_for_date' | 'waiting_for_slot' | 'waiting_for_details' | 'waiting_for_payment' | 'waiting_for_payment_confirmation';
   selectedDepartment?: 'Ortho' | 'ENT';
   selectedDate?: string;
   selectedSlot?: string;
@@ -12,6 +12,7 @@ export interface UserBookingState {
     department?: string;
   };
   reservationTime?: number; // Track when slot was reserved
+  paymentReservationTime?: number; // Track when payment was reserved
   lastActivityTime?: number; // Track when user was last active
 }
 

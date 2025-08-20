@@ -76,6 +76,14 @@ export class MessageHandlerService {
       // User providing patient details
       console.log(`Handling patient details for step: ${userState.step}`);
       await BookingFlowService.handlePatientDetails(userPhone, messageText, userState);
+    } else if (userState.step === 'waiting_for_payment') {
+      // User confirming payment
+      console.log(`Handling payment confirmation for step: ${userState.step}`);
+      await BookingFlowService.handlePaymentConfirmation(userPhone, messageText, userState);
+    } else if (userState.step === 'waiting_for_payment_confirmation') {
+      // User clicked payment button or payment webhook received
+      console.log(`Handling payment confirmation for step: ${userState.step}`);
+      await BookingFlowService.handlePaymentWebhook(userPhone, messageText, userState);
     } else {
       console.log(`No matching step found, sending welcome message. Step was: ${userState.step}`);
       await MessageGeneratorService.sendWelcomeMessage(userPhone);
