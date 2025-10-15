@@ -117,9 +117,9 @@ function App() {
   return (
     <div className="orent-root">
       {/* Announcement Section */}
-      <section className="announcement-section">
+      {/* <section className="announcement-section">
         {en.announcement}
-      </section>
+      </section> */}
       {/* Top Navigation Bar */}
       <nav className="navbar">
         <div className="navbar-left">

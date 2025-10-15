@@ -568,6 +568,11 @@ html {
   border-width: 4px;
 }
 
+/* Hide hamburger menu on desktop */
+.navbar-hamburger {
+  display: none;
+}
+
 /* Responsive Styles */
 @media (max-width: 900px) {
   .about-section, .contact-details {
