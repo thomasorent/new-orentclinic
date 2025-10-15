@@ -250,121 +250,9 @@ export class BookingFlowService {
     }
   }
 
-  // Handle payment confirmation
-  static async handlePaymentConfirmation(userPhone: string, messageText: string, userState: UserBookingState): Promise<void> {
-    const response = messageText.toLowerCase().trim();
-    
-    if (response === 'pay' || response === 'confirm' || response === 'yes' || response === 'proceed') {
-      // User confirmed payment, proceed to payment step
-      console.log(`User confirmed payment for ${userPhone}, proceeding to payment`);
-      await this.proceedToPayment(userPhone, userState);
-    } else if (response === 'cancel' || response === 'no' || response === 'stop') {
-      // User cancelled
-      console.log(`User cancelled payment for ${userPhone}`);
-      
-      // Clear temporary reservation
-      if (userState.selectedDate && userState.selectedSlot && userState.selectedDepartment) {
-        const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
-        UserStateService.deleteTemporaryReservation(reservationKey);
-      }
-      
-      UserStateService.deleteUserState(userPhone);
-      await MessageGeneratorService.sendCancellationMessage(userPhone);
-    } else {
-      // Invalid response
-      await MessageGeneratorService.sendErrorMessage(
-        userPhone, 
-        '❓ Please reply with "pay" or "confirm" to proceed with payment, or "cancel" to stop the booking process.'
-      );
-    }
-  }
 
-  // Proceed to payment with interactive button
-  private static async proceedToPayment(userPhone: string, userState: UserBookingState): Promise<void> {
-    try {
-      if (!userState.selectedDate || !userState.selectedSlot || !userState.selectedDepartment || !userState.tempData?.patientName) {
-        throw new Error('Missing required appointment data');
-      }
 
-      // Update user state to waiting for payment
-      UserStateService.updateUserStep(userPhone, 'waiting_for_payment_confirmation');
-      
-      // Set payment reservation timeout (15 minutes)
-      const paymentReservationTime = Date.now() + (15 * 60 * 1000);
-      UserStateService.updateUserState(userPhone, { paymentReservationTime });
 
-      // Send payment message with interactive button
-      await MessageGeneratorService.sendPaymentButtonMessage(
-        userPhone,
-        userState.selectedDate,
-        userState.selectedSlot,
-        userState.selectedDepartment,
-        userState.tempData.patientName
-      );
-
-      // Set timeout to release slot if payment not confirmed
-      setTimeout(async () => {
-        await this.handlePaymentTimeout(userPhone, userState);
-      }, 15 * 60 * 1000); // 15 minutes
-
-    } catch (error) {
-      console.error('Error proceeding to payment:', error);
-      await MessageGeneratorService.sendErrorMessage(
-        userPhone,
-        '❌ Sorry, there was an error processing your payment request. Please try again or call us at 934 934 5538.'
-      );
-    }
-  }
-
-  // Handle payment webhook or user confirmation
-  static async handlePaymentWebhook(userPhone: string, messageText: string, userState: UserBookingState): Promise<void> {
-    try {
-      // This would typically handle Razorpay webhook events
-      // For now, we'll simulate payment confirmation when user types "paid" or similar
-      const response = messageText.toLowerCase().trim();
-      
-      if (response === 'paid' || response === 'payment done' || response === 'completed') {
-        // Payment confirmed, create appointment
-        console.log(`Payment confirmed for ${userPhone}, creating appointment`);
-        await this.createAppointment(userPhone, userState);
-      } else {
-        // User might be asking about payment status
-        await MessageGeneratorService.sendErrorMessage(
-          userPhone,
-          '💳 **Payment Status**\n\nYour slot is reserved for 15 minutes.\n\nTo complete your booking:\n1. Click the "Pay Now" button above\n2. Complete payment on Razorpay\n3. Return here and type "paid" to confirm\n\nOr type "cancel" to cancel the booking.'
-        );
-      }
-    } catch (error) {
-      console.error('Error handling payment webhook:', error);
-      await MessageGeneratorService.sendErrorMessage(
-        userPhone,
-        '❌ Sorry, there was an error processing your payment confirmation. Please try again or call us at 934 934 5538.'
-      );
-    }
-  }
-
-  // Handle payment timeout
-  private static async handlePaymentTimeout(userPhone: string, userState: UserBookingState): Promise<void> {
-    try {
-      // Check if user is still in payment step and hasn't confirmed payment
-      const currentState = UserStateService.getUserState(userPhone);
-      if (currentState.step === 'waiting_for_payment_confirmation') {
-        // Release the slot
-        if (userState.selectedDate && userState.selectedSlot && userState.selectedDepartment) {
-          const reservationKey = `${userState.selectedDate}-${userState.selectedDepartment}-${userState.selectedSlot}`;
-          UserStateService.deleteTemporaryReservation(reservationKey);
-        }
-        
-        // Clear user state
-        UserStateService.deleteUserState(userPhone);
-        
-        // Send timeout message
-        await MessageGeneratorService.sendPaymentTimeoutMessage(userPhone);
-      }
-    } catch (error) {
-      console.error('Error handling payment timeout:', error);
-    }
-  }
 
   // Handle patient details
   static async handlePatientDetails(userPhone: string, messageText: string, userState: UserBookingState): Promise<void> {
@@ -426,17 +314,8 @@ export class BookingFlowService {
         }
       });
       
-      // Move to payment step
-      UserStateService.updateUserStep(userPhone, 'waiting_for_payment');
-      
-      // Send payment step message
-      await MessageGeneratorService.sendPaymentStepMessage(
-        userPhone, 
-        userState.selectedDate!, 
-        userState.selectedSlot!, 
-        userState.selectedDepartment!,
-        patientName
-      );
+      // Create appointment directly
+      await this.createAppointment(userPhone, userState);
       
     } catch (error) {
       console.error('Error handling patient details:', error);

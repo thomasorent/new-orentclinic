@@ -171,7 +171,6 @@ The `appointments` table includes:
 - `patient_name`: Patient's full name
 - `department`: Either 'Ortho' or 'ENT'
 - `patient_phone`: Patient's contact number
-- `paid`: Payment status (boolean)
 - `confirmed`: Confirmation status (boolean)
 - `created_at`: Record creation timestamp
 - `updated_at`: Last update timestamp (auto-updated)

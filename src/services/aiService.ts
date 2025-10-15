@@ -98,14 +98,6 @@ const MEDICAL_KNOWLEDGE_BASE = {
       'Your consultation is valid for review visits within 5 working days.'
     ]
   },
-  paymentModes: {
-    keywords: ['payment modes', 'payment methods', 'how to pay', 'payment options', 'cash', 'upi', 'digital payment'],
-    responses: [
-      'We accept cash, UPI, and most digital payment modes.',
-      'Payment can be made through cash, UPI, or digital payment methods.',
-      'We accept cash, UPI, and various digital payment options.'
-    ]
-  },
   holisticApproach: {
     keywords: ['holistic', 'holistic approach', 'lifestyle', 'posture', 'diet', 'mental well-being'],
     responses: [
@@ -147,7 +139,7 @@ const MEDICAL_KNOWLEDGE_BASE = {
     ]
   },
   fees: {
-    keywords: ['fee', 'cost', 'price', 'charge', 'payment', 'consultation fee'],
+    keywords: ['fee', 'cost', 'price', 'charge', 'consultation fee'],
     responses: [
       'Our consultation fees are ₹300 for new patients. This applies to both orthopedic and ENT consultations.',
       'New patient consultation: ₹300. These fees apply to both orthopedic and ENT services.',

@@ -96,7 +96,6 @@ export const quickReplies = [
   'Location',
   'Contact information',
   'Services offered',
-  'Payment methods',
   'Walk-in appointments'
 ];
 
