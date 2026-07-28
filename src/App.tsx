@@ -44,7 +44,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
 }
 
 const en = {
-  announcement: 'Announcement: Our consultation services at the centre are temporarily closed and will resume on October 8th, 2025. However, teleconsultation services remain available for existing patients. For further information or assistance, please contact us at 934 934 5538. We appreciate your understanding and continued trust.',
+  announcement: 'Announcement: Our consultation services at the centre are temporarily closed from July 11th, 2026 and will resume on October 12th, 2026. However, teleconsultation services remain available for existing patients. For further information or assistance, please contact us at 934 934 5538. We appreciate your understanding and continued trust.',
   nav: {
     home: 'Home',
     about: 'About Us',
@@ -117,9 +117,9 @@ function App() {
   return (
     <div className="orent-root">
       {/* Announcement Section */}
-      {/* <section className="announcement-section">
+      <section className="announcement-section">
         {en.announcement}
-      </section> */}
+      </section>
       {/* Top Navigation Bar */}
       <nav className="navbar">
         <div className="navbar-left">
