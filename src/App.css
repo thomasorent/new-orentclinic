@@ -409,37 +409,6 @@ html {
   background: #f8fafc;
 }
 
-/* Testimonials Section */
-.testimonials-section {
-  background: #f8fafc;
-  padding: 2.5rem 0 1.5rem 0;
-  text-align: center;
-}
-.testimonials-section h2 {
-  color: #1756A9;
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-}
-.testimonials-slider {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  max-width: 900px;
-  margin: 0 auto;
-}
-.testimonials-slider blockquote {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(23,86,169,0.06);
-  padding: 1.2rem 1.5rem;
-  font-size: 1.08rem;
-  color: #1a2a36;
-  font-style: italic;
-  max-width: 320px;
-}
-
 /* Contact Section */
 .contact-section {
   background: #fff;
@@ -623,10 +592,6 @@ html {
     gap: 1rem;
   }
   .doctors-cards {
-    gap: 1rem;
-  }
-  .testimonials-slider {
-    flex-direction: column;
     gap: 1rem;
   }
   .footer {
