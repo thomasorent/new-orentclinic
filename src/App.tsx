@@ -228,12 +228,12 @@ function App() {
             <tr>
               <td>{en.drThomas.name}</td>
               <td>Mon–Fri 10am–2pm</td>
-              <td>₹300</td>
+              <td>₹400</td>
             </tr>
             <tr>
               <td>{en.drSusan.name}</td>
               <td>Mon–Fri 10am–2pm</td>
-              <td>₹300</td>
+              <td>₹400</td>
             </tr>
           </tbody>
         </table>

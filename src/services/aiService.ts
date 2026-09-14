@@ -36,9 +36,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   consultationFee: {
     keywords: ['consultation fee', 'consultation cost', 'consultation price', 'consultation charge', 'fee for consultation'],
     responses: [
-      'The consultation fee is ₹300, valid for 5 working days.',
-      'Consultation fee is ₹300 and is valid for 5 working days.',
-      'We charge ₹300 for consultation, which is valid for 5 working days.'
+      'The consultation fee is ₹400, valid for 5 working days.',
+      'Consultation fee is ₹400 and is valid for 5 working days.',
+      'We charge ₹400 for consultation, which is valid for 5 working days.'
     ]
   },
   appointmentFee: {
@@ -93,7 +93,7 @@ const MEDICAL_KNOWLEDGE_BASE = {
   consultationValidity: {
     keywords: ['consultation valid', 'review visits', 'follow up', 'follow-up', 'validity', 'consultation validity'],
     responses: [
-      'Yes, the ₹300 consultation is valid for follow-up visits within 5 working days.',
+      'Yes, the ₹400 consultation is valid for follow-up visits within 5 working days.',
       'The consultation fee covers follow-up visits within 5 working days.',
       'Your consultation is valid for review visits within 5 working days.'
     ]
@@ -141,9 +141,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   fees: {
     keywords: ['fee', 'cost', 'price', 'charge', 'consultation fee'],
     responses: [
-      'Our consultation fees are ₹300 for new patients. This applies to both orthopedic and ENT consultations.',
-      'New patient consultation: ₹300. These fees apply to both orthopedic and ENT services.',
-      'Consultation fees: ₹300. Same rates for both orthopedic and ENT consultations.'
+      'Our consultation fees are ₹400 for new patients. This applies to both orthopedic and ENT consultations.',
+      'New patient consultation: ₹400. These fees apply to both orthopedic and ENT services.',
+      'Consultation fees: ₹400. Same rates for both orthopedic and ENT consultations.'
     ]
   },
   orthopedic: {
