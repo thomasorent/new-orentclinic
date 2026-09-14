@@ -94,7 +94,6 @@ const en = {
     submit: 'Submit'
   },
   hoursTitle: 'Clinic Hours & Fees',
-  testimonialsTitle: 'Testimonials',
   contactTitle: 'Location & Contact',
   contact: {
     address: 'Chengannur, Kerala, India',
@@ -238,16 +237,6 @@ function App() {
             </tr>
           </tbody>
         </table>
-      </section>
-
-      {/* Testimonials */}
-      <section className="testimonials-section">
-        <h2>{en.testimonialsTitle}</h2>
-        <div className="testimonials-slider">
-          <blockquote>"Excellent care and friendly staff!"</blockquote>
-          <blockquote>"Doctors are very patient and explain everything clearly."</blockquote>
-          <blockquote>"Highly recommend for both ortho and ENT needs."</blockquote>
-        </div>
       </section>
 
       {/* Location & Contact */}

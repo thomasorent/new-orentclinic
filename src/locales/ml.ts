@@ -49,7 +49,6 @@ const ml = {
     submit: 'സമർപ്പിക്കുക'
   },
   hoursTitle: 'ക്ലിനിക് സമയം & ഫീസ്',
-  testimonialsTitle: 'പ്രതികരണങ്ങൾ',
   contactTitle: 'സ്ഥലം & ബന്ധപ്പെടുക',
   contact: {
     address: 'ചെങ്ങന്നൂർ, കേരളം, ഇന്ത്യ',
