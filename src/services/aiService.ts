@@ -36,9 +36,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   consultationFee: {
     keywords: ['consultation fee', 'consultation cost', 'consultation price', 'consultation charge', 'fee for consultation'],
     responses: [
-      'The consultation fee is ₹400, valid for 5 working days.',
-      'Consultation fee is ₹400 and is valid for 5 working days.',
-      'We charge ₹400 for consultation, which is valid for 5 working days.'
+      'The consultation fee is ₹400, valid for 7 working days.',
+      'Consultation fee is ₹400 and is valid for 7 working days.',
+      'We charge ₹400 for consultation, which is valid for 7 working days.'
     ]
   },
   appointmentFee: {
@@ -93,9 +93,9 @@ const MEDICAL_KNOWLEDGE_BASE = {
   consultationValidity: {
     keywords: ['consultation valid', 'review visits', 'follow up', 'follow-up', 'validity', 'consultation validity'],
     responses: [
-      'Yes, the ₹400 consultation is valid for follow-up visits within 5 working days.',
-      'The consultation fee covers follow-up visits within 5 working days.',
-      'Your consultation is valid for review visits within 5 working days.'
+      'Yes, the ₹400 consultation is valid for follow-up visits within 7 working days.',
+      'The consultation fee covers follow-up visits within 7 working days.',
+      'Your consultation is valid for review visits within 7 working days.'
     ]
   },
   holisticApproach: {
@@ -254,4 +254,4 @@ export class AIService {
 }
 
 // Create singleton instance
-export const aiService = new AIService(); 
+export const aiService = new AIService();
