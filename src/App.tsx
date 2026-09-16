@@ -1,294 +1,115 @@
+import { useMemo, useState } from 'react'
 import './App.css'
-import Chatbot from './components/Chatbot'
-import { useState } from 'react'
-import { WhatsAppIcon } from './components/Icons';
 
-function HamburgerIcon({ open }: { open: boolean }) {
-  return (
-    <span style={{ display: 'inline-block', width: 22, height: 22, position: 'relative' }}>
-      <span style={{
-        position: 'absolute',
-        height: 2,
-        width: 18,
-        background: '#1756A9',
-        borderRadius: 2,
-        top: open ? 10 : 5,
-        left: 2,
-        transition: '0.3s',
-        transform: open ? 'rotate(45deg)' : 'none',
-      }} />
-      <span style={{
-        position: 'absolute',
-        height: 2,
-        width: 18,
-        background: '#1756A9',
-        borderRadius: 2,
-        top: 10,
-        left: 2,
-        opacity: open ? 0 : 1,
-        transition: '0.3s',
-      }} />
-      <span style={{
-        position: 'absolute',
-        height: 2,
-        width: 18,
-        background: '#1756A9',
-        borderRadius: 2,
-        top: open ? 10 : 15,
-        left: 2,
-        transition: '0.3s',
-        transform: open ? 'rotate(-45deg)' : 'none',
-      }} />
-    </span>
-  );
-}
+const receptionNumber = '919349345538'
 
-const en = {
-  announcement: 'Announcement: Our consultation services at the centre are temporarily closed from July 11th, 2026 and will resume on October 12th, 2026. However, teleconsultation services remain available for existing patients. For further information or assistance, please contact us at 934 934 5538. We appreciate your understanding and continued trust.',
-  nav: {
-    home: 'Home',
-    about: 'About Us',
-    services: 'Services',
-    doctors: 'Doctors',
-    appointments: 'Appointments',
-    contact: 'Contact',
-    whatsapp: 'WhatsApp'
-  },
-  hero: {
-    title: 'Orthopedic & ENT Care in Chengannur',
-    subtitle: 'Dr. K. M. Thomas – Orthopedic Surgeon | Dr. Susan Thomas – ENT Specialist',
-    book: 'Book Appointment',
-    call: 'Call Now'
-  },
-  aboutTitle: 'About Us',
-  aboutWelcome: 'Welcome! We redefine healthcare by offering a holistic approach and prevention that transcends conventional treatment. Our mission is to provide expert care in Orthopaedics and ENT while focusing on enhancing your overall quality of life and longevity. We view each patient as a unique individual deserving personalized attention. Our commitment goes beyond addressing immediate health concerns; we strive to improve your health span and lifespan, ensuring a comprehensive approach to your well-being. With a foundation built on medical excellence and unwavering ethical standards, we take pride in delivering top-quality healthcare.',
-  aboutRelationship: `We believe that a strong, trusting doctor-patient relationship is essential for effective treatment and long-term health. Here at Orent Consultations, you're more than just a patient - you're an active partner in your health journey. Together, we'll work towards achieving your best possible health outcomes.`,
-  servicesTitle: 'Our Services',
-  services: {
-    ortho: 'Orthopedics',
-    ent: 'ENT',
-    procedures: 'Minor Procedures'
-  },
-  doctorsTitle: 'Meet the Doctors',
-  drThomas: {
-    name: 'Dr. K. M. Thomas',
-    qual: 'MBBS, D.Ortho',
-    details: '<span class="degree-label">MBBS</span>: Govt. Medical College, Thiruvananthapuram, 1981<br /><span class="degree-label">PG</span>: Govt. Medical College, Calicut, 1986',
-    spec: 'Bone and Joint diseases'
-  },
-  drSusan: {
-    name: 'Dr. Susan Thomas',
-    qual: 'MBBS, DLO, MS. ENT',
-    details: '<span class="degree-label">MBBS</span>: Govt. Medical College, Thiruvananthapuram, 1981<br /><span class="degree-label">PG</span>: Govt. Medical College, Calicut, 1987',
-    spec: 'Ear, Nose, Throat (ENT)'
-  },
-  viewProfile: 'View Profile',
-  appointmentTitle: 'Book an Appointment',
-  appointment: {
-    name: 'Name',
-    phone: 'Phone',
-    choose: 'Choose Doctor',
-    ortho: 'Orthopedic',
-    ent: 'ENT',
-    date: 'Preferred Date & Time',
-    submit: 'Submit'
-  },
-  hoursTitle: 'Clinic Hours & Fees',
-  contactTitle: 'Location & Contact',
-  contact: {
-    address: 'Chengannur, Kerala, India',
-    phone: 'Phone',
-    website: 'orentclinic.com',
-    whatsapp: 'WhatsApp'
-  },
-  footer: {
-    privacy: 'Privacy Policy',
-    terms: 'Terms',
-    sitemap: 'Sitemap',
-    copyright: `© ${new Date().getFullYear()} Orent Clinic. All rights reserved.`
-  }
+const doctors = [
+  { id: 'thomas', name: 'Dr. K. M. Thomas', shortSpecialty: 'Orthopedics', qualification: 'MBBS, D.Ortho', training: 'Govt. Medical College, Thiruvananthapuram, 1981', postgraduate: 'Govt. Medical College, Calicut, 1986', image: '/thomas.jpg' },
+  { id: 'susan', name: 'Dr. Susan Thomas', shortSpecialty: 'Ear, nose & throat', qualification: 'MBBS, DLO, MS ENT', training: 'Govt. Medical College, Thiruvananthapuram, 1981', postgraduate: 'Govt. Medical College, Calicut, 1987', image: '/susan.jpg' },
+]
+
+const faqs = [
+  { question: 'Can I visit without an appointment?', answer: 'Walk-ins are welcome, but calling reception first helps us confirm the doctor’s availability and reduce your waiting time.' },
+  { question: 'What should I bring?', answer: 'Please bring any relevant prescriptions, reports, scans, medication lists and a form of identification.' },
+  { question: 'How does a review visit work?', answer: 'A review within seven working days, including the consultation day, is free. Please contact reception to arrange it.' },
+  { question: 'Can I book by phone?', answer: 'Yes. Call 934 934 5538 and reception will help you find a suitable consultation time.' },
+]
+
+function Arrow({ diagonal = false }: { diagonal?: boolean }) {
+  return <span aria-hidden="true" className="arrow">{diagonal ? '↗' : '→'}</span>
 }
 
 function App() {
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
+  const [specialist, setSpecialist] = useState(doctors[0].id)
+  const [visitType, setVisitType] = useState('First consultation')
+  const [guideOpen, setGuideOpen] = useState(false)
+
+  const bookingUrl = useMemo(() => {
+    const doctor = doctors.find((item) => item.id === specialist) ?? doctors[0]
+    const message = `Hello Orent, I would like to request a ${visitType.toLowerCase()} with ${doctor.name} (${doctor.shortSpecialty}). Please share the next available date.`
+    return `https://wa.me/${receptionNumber}?text=${encodeURIComponent(message)}`
+  }, [specialist, visitType])
 
   return (
-    <div className="orent-root">
-      {/* Announcement Section */}
-      <section className="announcement-section">
-        {en.announcement}
-      </section>
-      {/* Top Navigation Bar */}
-      <nav className="navbar">
-        <div className="navbar-left">
-          {/* Row for hamburger and logo */}
-          <div className="navbar-mobile-row">
-            <span className="logo">Orent Consultation</span>
-            <button
-              className="navbar-hamburger"
-              aria-label="Open menu"
-              onClick={() => setNavOpen((o) => !o)}
-            >
-              <HamburgerIcon open={navOpen} />
-            </button>
+    <div className="site-root">
+      <header>
+        <div className="topbar"><div className="page-shell topbar-inner"><span>Chengannur, Kerala</span><a href="tel:+919349345538">Call reception · 934 934 5538</a></div></div>
+        <nav className="main-nav" aria-label="Main navigation">
+          <div className="page-shell nav-inner">
+            <a className="wordmark" href="#home" aria-label="Orent home"><strong>orent</strong><span>Illness to wellness</span></a>
+            <div className="nav-links"><a href="#care">Our care</a><a href="#doctors">Your doctors</a><a href="#visit">Plan your visit</a></div>
+            <a className="button nav-cta" href="#booking">Request appointment <Arrow diagonal /></a>
           </div>
-          <span className="tagline">Orthopedic & ENT Care, Chengannur, Kerala, India</span>
-        </div>
-        <ul className={`navbar-right${navOpen ? ' open' : ''}`}>
-          <li><a href="#home" onClick={() => setNavOpen(false)}>{en.nav.home}</a></li>
-          <li><a href="#about" onClick={() => setNavOpen(false)}>{en.nav.about}</a></li>
-          <li><a href="#services" onClick={() => setNavOpen(false)}>{en.nav.services}</a></li>
-          <li><a href="#doctors" onClick={() => setNavOpen(false)}>{en.nav.doctors}</a></li>
-          {/* <li><a href="#appointments" onClick={() => setNavOpen(false)}>{en.nav.appointments}</a></li> */}
-          <li><a href="#contact" onClick={() => setNavOpen(false)}>{en.nav.contact}</a></li>
-          <li><a href="https://wa.me/919349345538" target="_blank" rel="noopener noreferrer" className="whatsapp-icon" onClick={() => setNavOpen(false)}><WhatsAppIcon size={22} /></a></li>
-        </ul>
-      </nav>
+        </nav>
+      </header>
 
-      {/* Hero Section */}
-      <section className="hero-section" id="home">
-        <div className="hero-bg" />
-        <div className="hero-content">
-          <h1>{en.hero.title}</h1>
-          <h2>{en.hero.subtitle}</h2>
-          {/* <div className="hero-cta">
-            <button className="cta-btn">{en.hero.book}</button>
-            <a href="tel:9349345538" className="cta-btn secondary">{en.hero.call}</a>
-          </div> */}
-        </div>
-      </section>
-
-      {/* About the Clinic */}
-      <section className="about-section" id="about">
-        <div className="about-content">
-          <h2>{en.aboutTitle}</h2>
-          <p>{en.aboutWelcome}</p>
-          <p>{en.aboutRelationship}</p>
-        </div>
-      </section>
-
-      {/* Our Services */}
-      <section className="services-section" id="services">
-        <h2>{en.servicesTitle}</h2>
-        <div className="services-grid">
-          <div className="service-item"><span role="img" aria-label="Orthopedics">🦴</span><p>{en.services.ortho}</p></div>
-          <div className="service-item"><span role="img" aria-label="ENT">👂</span><p>{en.services.ent}</p></div>
-          <div className="service-item"><span role="img" aria-label="Procedures">🩺</span><p>{en.services.procedures}</p></div>
-        </div>
-      </section>
-
-      {/* Meet the Doctors */}
-      <section className="doctors-section" id="doctors">
-        <h2>{en.doctorsTitle}</h2>
-        <div className="doctors-cards">
-          <div className="doctor-card">
-            <div className="doctor-card-left">
-              <img src="/thomas.jpg" />
+      <main>
+        <section className="hero" id="home">
+          <div className="page-shell hero-grid">
+            <div className="hero-copy">
+              <p className="eyebrow">Orthopedic & ENT consultations</p>
+              <h1>Expert care.<br />Personal attention.<br /><em>Right here.</em></h1>
+              <p className="hero-intro">Care for your bones, joints, ears, nose and throat. Two experienced specialists, with time to listen and help you understand your next step.</p>
+              <div className="hero-actions"><a className="button primary" href="#booking">Request an appointment <Arrow diagonal /></a><a className="text-link" href="#doctors">Meet your doctors</a></div>
+              <div className="hero-meta"><span>Based in Chengannur</span><span>Walk-ins welcome</span></div>
             </div>
-            <div className="doctor-card-right">
-              <h3 style={{textAlign: 'left'}}>{en.drThomas.name}</h3>
-              <p>{en.drThomas.qual}</p>
-              <p style={{margin: '0.3em 0 0.5em 0', fontSize: '0.98em'}} dangerouslySetInnerHTML={{__html: en.drThomas.details}} />
-              <p>{en.drThomas.spec}</p>
+            <div className="hero-visual" aria-label="Dr. K. M. Thomas and Dr. Susan Thomas">
+              <p className="visual-caption">Familiar faces. Thoughtful care.</p>
+              <figure className="portrait portrait-thomas"><img src="/thomas.jpg" alt="Dr. K. M. Thomas" /><figcaption><strong>Dr. K. M. Thomas</strong><span>Orthopedics</span></figcaption></figure>
+              <figure className="portrait portrait-susan"><img src="/susan.jpg" alt="Dr. Susan Thomas" /><figcaption><strong>Dr. Susan Thomas</strong><span>Ear, nose & throat</span></figcaption></figure>
             </div>
           </div>
-          <div className="doctor-card">
-            <div className="doctor-card-left">
-              <img src="/susan.jpg" alt="Dr. Susan Thomas" />
+        </section>
+
+        <aside className="closure-note"><div className="page-shell closure-inner"><div><span>Before you travel</span><p>Consultations are paused through 12 October 2026. Please contact reception to confirm the next available date.</p></div><a href={`https://wa.me/${receptionNumber}?text=${encodeURIComponent('Hello Orent, please confirm your next available consultation date.')}`} target="_blank" rel="noreferrer">Check availability <Arrow diagonal /></a></div></aside>
+
+        <section className="care-section" id="care"><div className="page-shell">
+          <div className="section-heading split-heading"><div><p className="eyebrow">Two specialties. One place.</p><h2>Care that starts<br />with <em>you.</em></h2></div><p>Consultation, clear explanations and a treatment plan shaped around your needs.</p></div>
+          <div className="specialty-grid">
+            <article className="specialty-card orthopedic-card"><div className="card-index">01 / Orthopedics</div><h3>Move with more confidence.</h3><p>Consultation for bone and joint concerns, including knee pain, shoulder stiffness and back pain.</p><ul><li>Bones & joints</li><li>Movement</li><li>Second opinions</li></ul><a href="#booking">Consult Dr. K. M. Thomas <Arrow diagonal /></a></article>
+            <article className="specialty-card ent-card"><div className="card-index">02 / Ear, nose & throat</div><h3>Comfort in the everyday.</h3><p>Specialist assessment of ear, nose and throat concerns, with individual advice and follow-up.</p><ul><li>Ear care</li><li>Nose & sinuses</li><li>Throat concerns</li></ul><a href="#booking">Consult Dr. Susan Thomas <Arrow diagonal /></a></article>
+          </div>
+        </div></section>
+
+        <section className="principle-section" id="principle" aria-labelledby="principle-heading">
+          <div className="page-shell principle-grid">
+            <div className="principle-heading">
+              <p className="eyebrow">Our core principle</p>
+              <h2 id="principle-heading">From illness<br />to <em>wellness.</em></h2>
+              <div className="principle-mark" aria-hidden="true">＋</div>
             </div>
-            <div className="doctor-card-right">
-              <h3 style={{textAlign: 'left'}}>{en.drSusan.name}</h3>
-              <p>{en.drSusan.qual}</p>
-              <p style={{margin: '0.3em 0 0.5em 0', fontSize: '0.98em'}} dangerouslySetInnerHTML={{__html: en.drSusan.details}} />
-              <p>{en.drSusan.spec}</p>
+            <div className="principle-copy">
+              <p>At <strong>Orent</strong>, we believe healthcare should be <strong>personalised, preventive and participatory</strong>, with early identification of individual health risks.</p>
+              <p>Our approach considers each person’s medical history, lifestyle, environment and personal circumstances. By recognising the early transition from wellness towards disease, we aim to enable timely intervention before illness becomes advanced or causes irreversible changes.</p>
+              <p>Through clear information, shared decision-making, regular monitoring and practical preventive measures, we encourage every patient to participate actively in maintaining their health.</p>
+              <p>Our objective is not merely to treat established disease, but to help each individual remain mentally alert, physically active and independent for as many years as possible.</p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-     {/* Book an Appointment */}
-     {/* <section className="appointment-section" id="appointments">
-        <h2>{en.appointmentTitle}</h2>
-        <AppointmentManager />
-      </section> */}
+        <section className="doctors-section" id="doctors"><div className="page-shell">
+          <div className="section-heading split-heading doctor-heading"><div><p className="eyebrow">Your doctors</p><h2>Experience.<br /><em>With a personal touch.</em></h2></div><p>We believe good care begins with a conversation. We work with you to understand your concerns and explain your options.</p></div>
+          <div className="doctor-grid">{doctors.map((doctor) => <article className="doctor-card" key={doctor.id}><img src={doctor.image} alt={doctor.name} /><div className="doctor-card-copy"><span>{doctor.shortSpecialty}</span><h3>{doctor.name}</h3><strong>{doctor.qualification}</strong><dl><div><dt>MBBS</dt><dd>{doctor.training}</dd></div><div><dt>Postgraduate training</dt><dd>{doctor.postgraduate}</dd></div></dl></div></article>)}</div>
+        </div></section>
 
-      {/* Clinic Hours & Fees */}
-      <section className="hours-section">
-        <h2>{en.hoursTitle}</h2>
-        <table className="hours-table">
-          <thead>
-            <tr>
-              <th>{en.doctorsTitle.slice(0,6)}</th>
-              <th>Timing</th>
-              <th>Fee</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{en.drThomas.name}</td>
-              <td>Mon–Fri 10am–2pm</td>
-              <td>₹400</td>
-            </tr>
-            <tr>
-              <td>{en.drSusan.name}</td>
-              <td>Mon–Fri 10am–2pm</td>
-              <td>₹400</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+        <section className="booking-section" id="booking"><div className="page-shell booking-grid">
+          <div className="booking-copy"><p className="eyebrow">A simpler next step</p><h2>Your visit<br />starts <em>here.</em></h2><p>Choose your specialist and open a prepared WhatsApp message. Reception will help you arrange a suitable appointment.</p><div className="booking-note">Your appointment is confirmed only when reception replies. Prefer to speak to someone? <a href="tel:+919349345538">Call 934 934 5538</a>.</div></div>
+          <form className="booking-form" onSubmit={(event) => event.preventDefault()}><label htmlFor="specialist">Who would you like to consult?</label><select id="specialist" value={specialist} onChange={(event) => setSpecialist(event.target.value)}>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name} · {doctor.shortSpecialty}</option>)}</select><label htmlFor="visit-type">Type of visit</label><select id="visit-type" value={visitType} onChange={(event) => setVisitType(event.target.value)}><option>First consultation</option><option>Follow-up consultation</option><option>Investigation review</option></select><a className="button booking-button" href={bookingUrl} target="_blank" rel="noreferrer">Continue on WhatsApp <Arrow diagonal /></a><small>This opens WhatsApp; no patient information is collected on this page.</small></form>
+        </div></section>
 
-      {/* Location & Contact */}
-      <section className="contact-section" id="contact">
-        <h2>{en.contactTitle}</h2>
-        <div className="contact-details">
-          <div className="map-embed">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1968.6140325906233!2d76.6205208001275!3d9.31304939932551!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b0622c0842a2cfb%3A0x97a58e72325b57d0!2sOrent%20Clinic%20(Orthopedic%20%26%20ENT)!5e0!3m2!1sen!2sin!4v1753032000706!5m2!1sen!2sin"
-              width="100%"
-              height="200"
-              style={{ border: 0 }}
-              allowFullScreen={true}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Orent Clinic Location"
-            ></iframe>
+        <section className="visit-section" id="visit"><div className="page-shell">
+          <div className="section-heading visit-heading"><p className="eyebrow">Plan your visit</p><h2>A little clarity,<br /><em>before you arrive.</em></h2></div>
+          <div className="visit-grid">
+            <article className="visit-card hours-card"><span>Consultation</span><h3>Monday to Friday</h3><p className="large-detail">10:00 AM to 3:00 PM</p><p>Appointments from 10:30 AM</p><strong>₹400 consultation</strong><small>Free review within 7 working days, including the consultation day. Please confirm availability during the current closure.</small></article>
+            <article className="visit-card location-card"><span>Find us</span><h3>Orent, Chengannur</h3><p>Near I.T.I. Junction, SH 1<br />Chengannur, Kerala 689121</p><a href="https://www.google.com/maps/search/?api=1&query=Orent+Clinic+Chengannur" target="_blank" rel="noreferrer">Open in Google Maps <Arrow diagonal /></a><a href="tel:+914792455538">0479 245 5538</a><a href="tel:+919388958498">+91 93889 58498</a><a href="mailto:orentclinic@gmail.com">orentclinic@gmail.com</a></article>
+            <article className="visit-card faq-card"><span>Helpful to know</span><div className="faq-list">{faqs.map((faq) => <details key={faq.question}><summary>{faq.question}<b>＋</b></summary><p>{faq.answer}</p></details>)}</div></article>
           </div>
-          <div className="contact-info">
-            <p>📍 {en.contact.address}</p>
-            <p>📞 <a href="tel:+914792455538">+91-479-2455538</a></p>
-            <p>📞 <a href="tel:+919349345538">+91-934-934-5538</a></p>
-            <p>📞 <a href="tel:+919388958498">+91-938-895-8498</a></p>
-            <p>📞 <a href="tel:+918921042340">+91-892-104-2340</a></p>
-            <div style={{ display: 'flex', gap: '1.5rem', margin: '0.5em 0' }}>
-              <a href="https://wa.me/919847462563" target="_blank" rel="noopener noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
-                <WhatsAppIcon size={18} /> WhatsApp (Ortho)
-              </a>
-              <a href="https://wa.me/919447400188" target="_blank" rel="noopener noreferrer" style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
-                <WhatsAppIcon size={18} /> WhatsApp (ENT)
-              </a>
-            </div>
-            <p>✉️ Email: <a href="mailto:orentclinic@gmail.com">orentclinic@gmail.com</a></p>
-          </div>
-        </div>
-      </section>
+        </div></section>
+      </main>
 
-      {/* Footer */}
-      <footer className="footer">
-        {/* <div className="footer-links">
-          <a href="#">{en.footer.privacy}</a> | <a href="#">{en.footer.terms}</a> | <a href="#">{en.footer.sitemap}</a>
-        </div> */}
-        {/* <div className="footer-social">
-          {/* Add social icons if any }
-        </div> */}
-        <div className="footer-copy">{en.footer.copyright}</div>
-      </footer>
-      {/* AI Chatbot */}
-      <Chatbot 
-        isOpen={isChatbotOpen} 
-        onToggle={() => setIsChatbotOpen(!isChatbotOpen)} 
-      />
+      <footer><div className="page-shell footer-inner"><a className="wordmark footer-wordmark" href="#home"><strong>orent</strong><span>Illness to wellness</span></a><div><p>Orthopedic & ENT consultations</p><span>Chengannur, Kerala · © {new Date().getFullYear()} Orent</span></div></div></footer>
+
+      <div className={`clinic-guide ${guideOpen ? 'guide-open' : ''}`}>{guideOpen && <div className="guide-panel"><button className="guide-close" onClick={() => setGuideOpen(false)} aria-label="Close clinic guide">×</button><span>Clinic guide</span><h2>How can we help?</h2><a href="#booking" onClick={() => setGuideOpen(false)}>Request an appointment <Arrow /></a><a href="tel:+919349345538">Call reception <Arrow /></a><a href="#visit" onClick={() => setGuideOpen(false)}>Plan your visit <Arrow /></a></div>}<button className="guide-toggle" onClick={() => setGuideOpen((open) => !open)} aria-expanded={guideOpen}>{guideOpen ? '×' : '＋'} Clinic guide</button></div>
     </div>
   )
 }
