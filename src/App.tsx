@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import ClinicGuide from './components/ClinicGuide'
 import './App.css'
 
 const receptionNumber = '919349345538'
@@ -12,7 +12,7 @@ const faqs = [
   { question: 'Can I visit without an appointment?', answer: 'Walk-ins are welcome, but calling reception first helps us confirm the doctor’s availability and reduce your waiting time.' },
   { question: 'What should I bring?', answer: 'Please bring any relevant prescriptions, reports, scans, medication lists and a form of identification.' },
   { question: 'How does a review visit work?', answer: 'A review within seven working days, including the consultation day, is free. Please contact reception to arrange it.' },
-  { question: 'Can I book by phone?', answer: 'Yes. Call 934 934 5538 and reception will help you find a suitable consultation time.' },
+  { question: 'Can I book by phone?', answer: 'Yes. Call reception at 934 934 5538 between 8:00 AM and 6:00 PM to book an appointment.' },
 ]
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
@@ -20,16 +20,6 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
 }
 
 function App() {
-  const [specialist, setSpecialist] = useState(doctors[0].id)
-  const [visitType, setVisitType] = useState('First consultation')
-  const [guideOpen, setGuideOpen] = useState(false)
-
-  const bookingUrl = useMemo(() => {
-    const doctor = doctors.find((item) => item.id === specialist) ?? doctors[0]
-    const message = `Hello Orent, I would like to request a ${visitType.toLowerCase()} with ${doctor.name} (${doctor.shortSpecialty}). Please share the next available date.`
-    return `https://wa.me/${receptionNumber}?text=${encodeURIComponent(message)}`
-  }, [specialist, visitType])
-
   return (
     <div className="site-root">
       <header>
@@ -93,8 +83,7 @@ function App() {
         </div></section>
 
         <section className="booking-section" id="booking"><div className="page-shell booking-grid">
-          <div className="booking-copy"><p className="eyebrow">A simpler next step</p><h2>Your visit<br />starts <em>here.</em></h2><p>Choose your specialist and open a prepared WhatsApp message. Reception will help you arrange a suitable appointment.</p><div className="booking-note">Your appointment is confirmed only when reception replies. Prefer to speak to someone? <a href="tel:+919349345538">Call 934 934 5538</a>.</div></div>
-          <form className="booking-form" onSubmit={(event) => event.preventDefault()}><label htmlFor="specialist">Who would you like to consult?</label><select id="specialist" value={specialist} onChange={(event) => setSpecialist(event.target.value)}>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name} · {doctor.shortSpecialty}</option>)}</select><label htmlFor="visit-type">Type of visit</label><select id="visit-type" value={visitType} onChange={(event) => setVisitType(event.target.value)}><option>First consultation</option><option>Follow-up consultation</option><option>Investigation review</option></select><a className="button booking-button" href={bookingUrl} target="_blank" rel="noreferrer">Continue on WhatsApp <Arrow diagonal /></a><small>This opens WhatsApp; no patient information is collected on this page.</small></form>
+          <div className="booking-copy"><p className="eyebrow">A simpler next step</p><h2>Your visit<br />starts <em>here.</em></h2><p>To book an appointment with your preferred specialist, call reception at 934 934 5538 between 8:00 AM and 6:00 PM.</p></div>
         </div></section>
 
         <section className="visit-section" id="visit"><div className="page-shell">
@@ -109,7 +98,7 @@ function App() {
 
       <footer><div className="page-shell footer-inner"><a className="wordmark footer-wordmark" href="#home"><strong>orent</strong><span>Illness to wellness</span></a><div><p>Orthopedic & ENT consultations</p><span>Chengannur, Kerala · © {new Date().getFullYear()} Orent</span></div></div></footer>
 
-      <div className={`clinic-guide ${guideOpen ? 'guide-open' : ''}`}>{guideOpen && <div className="guide-panel"><button className="guide-close" onClick={() => setGuideOpen(false)} aria-label="Close clinic guide">×</button><span>Clinic guide</span><h2>How can we help?</h2><a href="#booking" onClick={() => setGuideOpen(false)}>Request an appointment <Arrow /></a><a href="tel:+919349345538">Call reception <Arrow /></a><a href="#visit" onClick={() => setGuideOpen(false)}>Plan your visit <Arrow /></a></div>}<button className="guide-toggle" onClick={() => setGuideOpen((open) => !open)} aria-expanded={guideOpen}>{guideOpen ? '×' : '＋'} Clinic guide</button></div>
+      <ClinicGuide />
     </div>
   )
 }
