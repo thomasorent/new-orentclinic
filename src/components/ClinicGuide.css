@@ -1,0 +1,123 @@
+.clinic-guide {
+  position: fixed;
+  right: 24px;
+  bottom: 22px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.guide-toggle {
+  min-width: 158px;
+  min-height: 54px;
+  padding: 10px 22px;
+  border: 1px solid #9bb26d;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--deep);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(20, 58, 57, .12);
+}
+
+.guide-toggle span { margin-right: 4px; }
+
+.guide-panel {
+  width: min(600px, calc(100vw - 32px));
+  max-height: min(75vh, 690px);
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 60px rgba(13, 42, 41, .2);
+}
+
+.guide-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 30px;
+  background: var(--deep);
+  color: #fff;
+}
+
+.guide-panel-header h2 {
+  margin: 0 0 4px;
+  font-size: 1.45rem;
+  line-height: 1.25;
+}
+
+.guide-panel-header p {
+  margin: 0;
+  color: #d9e6e2;
+  font-size: .9rem;
+}
+
+.guide-close {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.guide-panel-content { padding: 30px; }
+.guide-panel-content h3 {
+  margin: 0 0 22px;
+  color: #50625f;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.guide-topics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.guide-topic { min-width: 0; }
+
+.guide-topic-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 13px;
+  border: 1px solid #d6e1df;
+  border-radius: 999px;
+  background: #fbfdfc;
+  color: var(--deep);
+  text-align: center;
+  font-size: .88rem;
+  cursor: pointer;
+}
+
+.guide-topic-button:hover,
+.guide-topic-button.is-active { background: var(--soft-mint); border-color: #abcab9; }
+
+.guide-answer {
+  margin: 18px 0 0;
+  padding: 20px 22px;
+  border-radius: 12px;
+  background: #f4f8f6;
+  color: #526562;
+  font-size: .95rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 500px) {
+  .clinic-guide { right: 16px; bottom: 14px; }
+  .guide-panel { max-height: calc(100vh - 96px); }
+  .guide-panel-header, .guide-panel-content { padding: 22px; }
+  .guide-topic-button { font-size: .8rem; }
+}
+
+@media (max-width: 380px) {
+  .guide-topics { grid-template-columns: 1fr; }
+}
