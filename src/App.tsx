@@ -1,8 +1,6 @@
 import ClinicGuide from './components/ClinicGuide'
 import './App.css'
 
-const receptionNumber = '919349345538'
-
 const doctors = [
   { id: 'thomas', name: 'Dr. K. M. Thomas', shortSpecialty: 'Orthopedics', qualification: 'MBBS, D.Ortho', training: 'Govt. Medical College, Thiruvananthapuram, 1981', postgraduate: 'Govt. Medical College, Calicut, 1986', image: '/thomas.jpg' },
   { id: 'susan', name: 'Dr. Susan Thomas', shortSpecialty: 'Ear, nose & throat', qualification: 'MBBS, DLO, MS ENT', training: 'Govt. Medical College, Thiruvananthapuram, 1981', postgraduate: 'Govt. Medical College, Calicut, 1987', image: '/susan.jpg' },
@@ -50,8 +48,6 @@ function App() {
             </div>
           </div>
         </section>
-
-        <aside className="closure-note"><div className="page-shell closure-inner"><div><span>Before you travel</span><p>Consultations are paused through 12 October 2026. Please contact reception to confirm the next available date.</p></div><a href={`https://wa.me/${receptionNumber}?text=${encodeURIComponent('Hello Orent, please confirm your next available consultation date.')}`} target="_blank" rel="noreferrer">Check availability <Arrow diagonal /></a></div></aside>
 
         <section className="care-section" id="care"><div className="page-shell">
           <div className="section-heading split-heading"><div><p className="eyebrow">Two specialties. One place.</p><h2>Care that starts<br />with <em>you.</em></h2></div><p>Consultation, clear explanations and a treatment plan shaped around your needs.</p></div>
