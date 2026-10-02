@@ -8,8 +8,8 @@ const doctors = [
 
 const faqs = [
   { question: 'Can I visit without an appointment?', answer: 'Walk-ins are welcome, but calling reception first helps us confirm the doctor’s availability and reduce your waiting time.' },
-  { question: 'What should I bring?', answer: 'Please bring any relevant prescriptions, reports, scans, medication lists and a form of identification.' },
-  { question: 'How does a review visit work?', answer: 'A review within seven working days, including the consultation day, is free. Please contact reception to arrange it.' },
+  { question: 'What should I bring?', answer: 'Please bring any relevant prescriptions, reports, scans and medication lists.' },
+  { question: 'How does a review visit work?', answer: 'A review within seven days, including the consultation day, is free. Please contact reception to arrange it.' },
   { question: 'Can I book by phone?', answer: 'Yes. Call reception at 934 934 5538 between 8:00 AM and 6:00 PM to book an appointment.' },
 ]
 
@@ -85,7 +85,7 @@ function App() {
         <section className="visit-section" id="visit"><div className="page-shell">
           <div className="section-heading visit-heading"><p className="eyebrow">Plan your visit</p><h2>A little clarity,<br /><em>before you arrive.</em></h2></div>
           <div className="visit-grid">
-            <article className="visit-card hours-card"><span>Consultation</span><h3>Monday to Friday</h3><p className="large-detail">10:00 AM to 3:00 PM</p><p>Appointments from 10:30 AM</p><strong>₹400 consultation</strong><small>Free review within 7 days. Please confirm availability during the current closure.</small></article>
+            <article className="visit-card hours-card"><span>Consultation</span><h3>Monday to Friday</h3><p className="large-detail">10:00 AM to 3:00 PM</p><p>Appointments from 10:30 AM</p><strong>₹400 consultation</strong><small>Free review within 7 days.</small></article>
             <article className="visit-card location-card"><span>Find us</span><h3>Orent, Chengannur</h3><p>Near I.T.I. Junction, SH 1<br />Chengannur, Kerala 689121</p><a href="https://www.google.com/maps/search/?api=1&query=Orent+Clinic+Chengannur" target="_blank" rel="noreferrer">Open in Google Maps <Arrow diagonal /></a><a href="tel:+914792455538">0479 245 5538</a><a href="tel:+919388958498">+91 93889 58498</a><a href="mailto:orentclinic@gmail.com">orentclinic@gmail.com</a></article>
             <article className="visit-card faq-card"><span>Helpful to know</span><div className="faq-list">{faqs.map((faq) => <details key={faq.question}><summary>{faq.question}<b>＋</b></summary><p>{faq.answer}</p></details>)}</div></article>
           </div>
